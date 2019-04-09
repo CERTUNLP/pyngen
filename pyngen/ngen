@@ -57,7 +57,7 @@ def inits(url, key):
     with open(keyfile, 'w') as fout:
         fout.write(key)
     os.chmod(keyfile, 0o600)
-
+    
     keyfile = ngen_dir + '/url'
     with open(keyfile, 'w') as fout:
         fout.write(url)
@@ -74,13 +74,14 @@ def createNewIncident(pyngen, address, incident_feed, incident_type, **kargs):
         exit(2)
 
 
+
 if (args.revs=="newincident"):
     try:
         apikey = open(ngen_dir + '/api_key').read()
         url= open(ngen_dir + '/url').read()
     except:
         print ("Please use init first")
-        exit()
+        exit(2)
     ngen= PyNgen(url,apikey)
     createNewIncident(ngen, args.ip, args.feed, args.type)
 elif (args.revs=="init"):

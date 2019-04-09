@@ -27,7 +27,7 @@ from .NgenExceptions import *
 
 class PyNgen():
 
-    def __init__(self, url, api_key, port=443, scheme="https", path="api", format="json"):
+    def __init__(self, url, api_key, port=443, scheme="https", path="app_dev.php/api", format="json", debug=True):
         url = urlparse(url)
         if url.scheme == "http":
             self.port = 80
@@ -39,14 +39,15 @@ class PyNgen():
             raise (SchemeNotSettedError("Please set http/https"))
         if url.port != None:
             self.port = url.port
+        self.debug= debug
         self.api_key = api_key
         self.hostname = url.hostname
         self.path = path
         self.format = format
-        self.url = self.getUrl()
         self.logger = logging.getLogger(__name__)
         # check URL
         # check api_key
+        # print (self._completeUrl("/incidents"))
         self.checkUrl()
 
     # GENERICS
@@ -77,7 +78,7 @@ class PyNgen():
     # ==============================================
 
     def _getFeeds(self):
-        return self._action("incidents/feeds", "GET")['data']
+        return self._action("/incidents/feeds", "GET")['data']
 
     def _selectField(self, data, field):
         if field != None:
@@ -109,7 +110,7 @@ class PyNgen():
             name: Name for the feed.
         """
         data={"name":name}
-        return self._action("incidents/feeds", "POST",data=data)["data"][0]["slug"]
+        return self._action("/incidents/feeds", "POST",data=data)["data"][0]["slug"]
 
     def getFeed(self, slug):
         """
@@ -127,7 +128,7 @@ class PyNgen():
         Get all slugs with getFeeds(field="slug")
         **kargs keys: name, slug.
         """
-        res=self._action("incidents/feeds/{}".format(slug),"PATCH",data=kargs)
+        res=self._action("/incidents/feeds/{}".format(slug),"PATCH",data=kargs)
         return res["data"]
 #        return self._action("incidents/feeds", "POST",data=data)["data"]
 
@@ -137,7 +138,7 @@ class PyNgen():
     # ==============================================
 
     def _getIncidentTypes(self):
-        return self._action("incidents/incident/types", "GET")['data']
+        return self._action("/incidents/incident/types", "GET")['data']
 
     def getIncidentTypes(self, field=None):
         data = self._getIncidentTypes()
@@ -157,7 +158,7 @@ class PyNgen():
             Slug name
         """
         data={"name":name}
-        return self._action("incidents/types", "POST",data=data)["data"][0]["slug"]
+        return self._action("/incidents/types", "POST",data=data)["data"][0]["slug"]
 
     def editIncidentType(self, slug, **kargs):
         """
@@ -165,7 +166,7 @@ class PyNgen():
         Get all slugs with getIncidentTypes(field="slug")
         **kargs keys: name, slug.
         """
-        res=self._action("incidents/types/{}".format(slug),"PATCH",data=kargs)
+        res=self._action("/incidents/types/{}".format(slug),"PATCH",data=kargs)
         return res["data"]
 
     # ==============================================
@@ -194,13 +195,8 @@ class PyNgen():
         self.getActiveFeeds()
         # To Do
 
-    # new Report with evidence file
-    # Ip: IP
-    # Feed: Active feed slug
-    # Type: Active incident type slug
-    # file: evidence file path
-    def reportFromFile(self, ip, feed, incident_type, evidence_path):
-        report = dict(type=incident_type, address=ip, feed=feed)
+
+    def _openFile(self, evidence_path):
         mime = magic.Magic(mime=True)
         mimetype = mime.from_file(evidence_path)
         if type(mimetype) == bytes:
@@ -209,8 +205,7 @@ class PyNgen():
 
         files = {'evidence_file': (
             "evidence.txt", data, mimetype, {'Expires': '0'})}
-        self.logger.debug("{} {}".format(report, files))
-        self._action("incidents", "POST", data=report, files=files)
+        return files
 
     def reportFromFileCSV(self, csv_path, feed, type, ip_header, delimiter=',',  is_domain=False):
         with open(csv_path, newline='') as csvfile:
@@ -294,7 +289,7 @@ class PyNgen():
 
     # get incident by id
     def getIncident(self, id):
-        res=self._action("incidents/{}".format(id),"GET")
+        res=self._action("/incidents/{}".format(id),"GET")
         if res["status_code"]==200:
             return res
 
@@ -303,7 +298,7 @@ class PyNgen():
         print (kargs,type(kargs))
         report = dict()
         report.update(kargs)
-        res=self._action("incidents/{}".format(id),"PATCH",data=kargs)
+        res=self._action("/incidents/{}".format(id),"PATCH",data=kargs)
         return res["data"]
 
     def _parseError(self, response):
@@ -316,6 +311,8 @@ class PyNgen():
             if ("errors" in msg["errors"]["children"]["type"].keys()):
                 types = self.getActiveIncidentTypes(field="slug")
                 ans += "INVALID INCIDENT TYPE slug, the valids are: {}\n".format(", ".join(types))
+            if (not "errors" in msg["errors"]["children"]["type"].keys() and not "errors" in msg["errors"]["children"]["feed"].keys()):
+                return response.msg
             return ans
 
 
@@ -328,21 +325,21 @@ class PyNgen():
             address=address,
             feed=incident_feed
         )
-
         report.update(kargs)
 
-        files = None
-        if "evidence" in kargs:
-            files = {'evidence_file': (
-                "evidence.txt", evidence, 'text/plain', {'Expires': '0'})}
+        files=None
+        if "evidence_file" in kargs:
+            files = self._openFile(evidence_file)
+        elif "evidence" in kargs:
+            files = {'evidence_file': ("evidence.txt", evidence, 'text/plain', {'Expires': '0'})}
 
         fail=False
         try:
-            response = self._action("incidents", "POST", data=report, files=files)
+            response = self._action("/incidents", "POST", data=report, files=files)
             return response["data"][0]["id"]
         except UnexpectedError as e:
-            var=NewIncidentFieldError(e.code, self._parseError(e))
-            fail=True
+            var = NewIncidentFieldError(e.detail, self._parseError(e))
+            fail = True
         finally:
             if fail:
                 raise var
@@ -356,11 +353,8 @@ class PyNgen():
         # To Do
         pass
 
-    def getUrl(self):
-        return "{}://{}:{}/{}".format(self.scheme, self.hostname, self.port, self.path)
-
     def _completeUrl(self, action):
-        return "{}/{}.{}?apikey={}".format(self.url, action, self.format, self.api_key)
+        return "{}://{}:{}/{}{}.{}?apikey={}".format(self.scheme, self.hostname, self.port, self.path, action, self.format, self.api_key)
         # TODO: sacar el limit cuando cambie la API
 
     #   Generic action for REST interface
@@ -368,7 +362,7 @@ class PyNgen():
         # headers = {'Accept': '/', 'Expect': '100-continue',
         #            'Content-type': 'application/json'}
         headers = {}  # {'Content-type': 'application/json'}
-
+        print (self._completeUrl(action))
         if method == "POST":
             r = requests.post(self._completeUrl(
                 action), headers=headers, files=files, data=data)
@@ -378,8 +372,10 @@ class PyNgen():
         else:
             r = (requests.request(method, self._completeUrl(
                 action), headers=headers, files=files))
-        self.logger.debug("method: {}\nreq headers: {}\nreq body: {}\nres text: {}\nres headers: {}\nreq url: {}\ndata: {}\nresponse: {}\n".format(
-           method, r.request.headers, r.request.body, r.text, r.headers, r.url, data, r))
+
+        if self.debug:
+            self.logger.debug("URL: {}\nMETHOD: {}\nREQ HEADERS: {}\nREQ BODY: {}\nRES TEXT: {}\nRES HEADERS: {}\ndata: {}\nresponse: {}\n".format(
+               r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
         elif r.status_code == 404:
@@ -393,5 +389,9 @@ class PyNgen():
             raise UnexpectedError(r.status_code, r.text)
 
         #print (r.text)
+        #data=json.loads(r.text)
+
+        #print (r.text)
+
         data=json.loads(r.text)
         return {"status_code": r.status_code, "data": data}
