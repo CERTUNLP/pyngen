@@ -23,8 +23,9 @@ ngen = PyNgen("ngen.example.com", "apiKey", port=443, scheme="https", path="api"
 #Add a new Incident for IP "163.10.0.2" for feed "shodan" and Type "open_dns"
 incident_id = ngen.newIncident("163.10.0.2","shodan","open_dns")
 
-#more data
-another_incident_id = ngen.newIncident("163.10.0.3","shodan","open_dns", evidence="")
+#upload with txt evidence
+another_incident_id = ngen.newIncident("163.0.0.99","another_feed","another_incident_type", evidence="text_evidence", notes="Notes for this incident", impact="low", urgency="medium")
+
 ```
 
 
