@@ -28,6 +28,19 @@ class UnexpectedError(NgenError):
         return self._detail.format(self.code, self.msg)
 
 
+class SchemeNotSettedError(NgenError):
+    _detail = '\n\n - Error Message:\n{}'
+
+    def __init__(self, msg):
+        self.msg = msg
+
+    @property
+    def detail(self):
+        # json.dumps(json.loads(self.msg), indent=4, sort_keys=True))
+        return self._detail.format(self.msg)
+
+
+
 class NewIncidentFieldError(NgenError):
     _detail = 'Error Message:\n{}'
 

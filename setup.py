@@ -6,8 +6,8 @@ DEPENDENCIES = open('requirements.txt', 'r').read().split('\n')
 
 setuptools.setup(
      name='pyngen',
-     version='0.1.1',
-     scripts=['pyngen/ngen'] ,
+     version='0.1.2',
+     scripts=['pyngen/ngen'],
      author="CERTUNLP",
      author_email="soporte@cert.unlp.edu.ar",
      description="Ngen REST. A python library for using Ngen",

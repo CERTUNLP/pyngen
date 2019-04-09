@@ -9,7 +9,7 @@ import re
 import tempfile
 import os
 from urllib.parse import urlsplit, urlparse
-from .NgenExceptions import *
+from NgenExceptions import *
 # =======Logger=============
 # logFormatter = logging.Formatter(
 #     "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
@@ -27,16 +27,24 @@ from .NgenExceptions import *
 
 class PyNgen():
 
-    def __init__(self, fqdn, api_key, port=443, scheme="https", path="app_dev.php/api", format="json"):
+    def __init__(self, url, api_key, port=443, scheme="https", path="api", format="json"):
+        url = urlparse(url)
+        if url.scheme == "http":
+            self.port = 80
+            self.scheme = url.scheme
+        elif url.scheme == "https":
+            self.port = 443
+            self.scheme = url.scheme
+        else:
+            raise (SchemeNotSettedError("Please set http/https"))
+        if url.port != None:
+            self.port = url.port
         self.api_key = api_key
-        self.port = port
-        self.scheme = scheme
+        self.hostname = url.hostname
         self.path = path
-        self.fqdn = fqdn
         self.format = format
         self.url = self.getUrl()
         self.logger = logging.getLogger(__name__)
-
         # check URL
         # check api_key
         self.checkUrl()
@@ -289,7 +297,7 @@ class PyNgen():
         res=self._action("incidents/{}".format(id),"GET")
         if res["status_code"]==200:
             return res
-      
+
 
     def editIncident (self,id,**kargs):
         print (kargs,type(kargs))
@@ -349,7 +357,7 @@ class PyNgen():
         pass
 
     def getUrl(self):
-        return "{}://{}:{}/{}".format(self.scheme, self.fqdn, self.port, self.path)
+        return "{}://{}:{}/{}".format(self.scheme, self.hostname, self.port, self.path)
 
     def _completeUrl(self, action):
         return "{}/{}.{}?apikey={}".format(self.url, action, self.format, self.api_key)
@@ -370,8 +378,8 @@ class PyNgen():
         else:
             r = (requests.request(method, self._completeUrl(
                 action), headers=headers, files=files))
-        #self.logger.debug("method: {}\nreq headers: {}\nreq body: {}\nres text: {}\nres headers: {}\nreq url: {}\ndata: {}\nresponse: {}\n".format(
-        #    method, r.request.headers, r.request.body, r.text, r.headers, r.url, data, r))
+        self.logger.debug("method: {}\nreq headers: {}\nreq body: {}\nres text: {}\nres headers: {}\nreq url: {}\ndata: {}\nresponse: {}\n".format(
+           method, r.request.headers, r.request.body, r.text, r.headers, r.url, data, r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
         elif r.status_code == 404:
