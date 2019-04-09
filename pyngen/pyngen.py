@@ -288,8 +288,8 @@ class PyNgen():
     def getIncident(self, id):
         res=self._action("incidents/{}".format(id),"GET")
         if res["status_code"]==200:
-            return json.loads(res)
-
+            return res
+      
 
     def editIncident (self,id,**kargs):
         print (kargs,type(kargs))
