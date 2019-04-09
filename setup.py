@@ -4,10 +4,9 @@ with open("README.md", "r") as fh:
 
 DEPENDENCIES = open('requirements.txt', 'r').read().split('\n')
 
-
 setuptools.setup(
-     name='ngen',
-     version='0.1',
+     name='pyngen',
+     version='0.1.1',
      scripts=['pyngen/ngen'] ,
      author="CERTUNLP",
      author_email="soporte@cert.unlp.edu.ar",
@@ -19,7 +18,5 @@ setuptools.setup(
      install_requires=DEPENDENCIES,
      classifiers=[
          "Programming Language :: Python :: 3",
-         "License :: GNU General Public License v3.0",
-         "Operating System :: Linux",
      ],
  )

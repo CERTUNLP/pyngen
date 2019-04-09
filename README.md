@@ -6,17 +6,22 @@ Cli and python library for using Ngen.
 
 Instalation
 -----------
-
-python3 setup.py build
-
-python3 setup.py install
-
+```bash
+pip3 install pyngen
+```
 
 Usage Python Module
 -------------------
 
- // To do
+```python
+from pyngen import PyNgen
 
+#Create object PyNgen
+pyngen = PyNgen("<urlNgen", "ApiKey", http=443, scheme="https")
+
+#Add a new Incident in ip "163.10.0.2" for feed "shodan" and Type "open_dns"
+id = ngen.newIncident("163.10.0.2","shodan","open_dns")
+```
 
 
 Usage CLI
