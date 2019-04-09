@@ -9,7 +9,7 @@ import re
 import tempfile
 import os
 from urllib.parse import urlsplit, urlparse
-from NgenExceptions import *
+from .NgenExceptions import *
 # =======Logger=============
 # logFormatter = logging.Formatter(
 #     "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
