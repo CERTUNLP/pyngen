@@ -44,8 +44,7 @@ class SchemeNotSettedError(NgenError):
 class NewIncidentFieldError(NgenError):
     _detail = 'Error Message:\n{}'
 
-    def __init__(self, code, msg):
-        self.code = code
+    def __init__(self,  msg):
         self.msg = msg
 
     @property

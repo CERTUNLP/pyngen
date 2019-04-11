@@ -338,11 +338,7 @@ class PyNgen():
             response = self._action("/incidents", "POST", data=report, files=files)
             return response["data"][0]["id"]
         except UnexpectedError as e:
-            var = NewIncidentFieldError(e.detail, self._parseError(e))
-            fail = True
-        finally:
-            if fail:
-                raise var
+            raise NewIncidentFieldError(e.msg)
 
 
 
@@ -362,7 +358,7 @@ class PyNgen():
         # headers = {'Accept': '/', 'Expect': '100-continue',
         #            'Content-type': 'application/json'}
         headers = {}  # {'Content-type': 'application/json'}
-        print (self._completeUrl(action))
+        print (self._completeUrl(action),method)
         if method == "POST":
             r = requests.post(self._completeUrl(
                 action), headers=headers, files=files, data=data)
@@ -374,7 +370,7 @@ class PyNgen():
                 action), headers=headers, files=files))
 
         if self.debug:
-            self.logger.debug("URL: {}\nMETHOD: {}\nREQ HEADERS: {}\nREQ BODY: {}\nRES TEXT: {}\nRES HEADERS: {}\ndata: {}\nresponse: {}\n".format(
+            print("URL: {}\nMETHOD: {}\nREQ HEADERS: {}\nREQ BODY: {}\nRES TEXT: {}\nRES HEADERS: {}\ndata: {}\nresponse: {}\n".format(
                r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
