@@ -10,20 +10,6 @@ import tempfile
 import os
 from urllib.parse import urlsplit, urlparse
 from .NgenExceptions import *
-# =======Logger=============
-# logFormatter = logging.Formatter(
-#     "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
-
-
-# fileHandler = logging.FileHandler("pyngen.log")
-# fileHandler.setFormatter(logFormatter)
-# logger.addHandler(fileHandler)
-# logger.setLevel(logging.DEBUG)
-# consoleHandler = logging.StreamHandler()
-# consoleHandler.setFormatter(logFormatter)
-# logger.addHandler(consoleHandler)
-# ===========================
-
 
 class PyNgen():
 
@@ -249,10 +235,6 @@ class PyNgen():
         header = new_data[header_pos_start:header_pos_end]
 
         reports = new_data[evidence_pos_start:]
-
-        # self.logger.info("reports: {}".format(reports))
-
-        # replace separator by , and remove comments
         lines = [item.replace(separtor, separator_desired)
                  for item in reports]
 
@@ -352,10 +334,7 @@ class PyNgen():
 
     #   Generic action for REST interface
     def _action(self, action, method, data=None, files=None):
-        # headers = {'Accept': '/', 'Expect': '100-continue',
-        #            'Content-type': 'application/json'}
-        headers = {}  # {'Content-type': 'application/json'}
-        print (self._completeUrl(action),method)
+        headers = {}
         if method == "POST":
             r = requests.post(self._completeUrl(
                 action), headers=headers, files=files, data=data)
@@ -367,7 +346,7 @@ class PyNgen():
                 action), headers=headers, files=files))
 
         if self.debug:
-            print("URL: {}\nMETHOD: {}\nREQ HEADERS: {}\nREQ BODY: {}\nRES TEXT: {}\nRES HEADERS: {}\ndata: {}\nresponse: {}\n".format(
+            print("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nresponse: {}\n\n".format(
                r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
@@ -380,11 +359,6 @@ class PyNgen():
         #=========
         elif not r.status_code in [200, 201, 204]:
             raise UnexpectedError(r.status_code, r.text)
-
-        #print (r.text)
-        #data=json.loads(r.text)
-
-        #print (r.text)
 
         data=json.loads(r.text)
         return {"status_code": r.status_code, "data": data}
