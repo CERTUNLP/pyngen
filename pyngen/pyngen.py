@@ -27,7 +27,7 @@ from .NgenExceptions import *
 
 class PyNgen():
 
-    def __init__(self, url, api_key, port=443, scheme="https", path="app_dev.php/api", format="json", debug=True):
+    def __init__(self, url, api_key, port=443, scheme="https", path="app_dev.php/api", format="json", debug=False):
         url = urlparse(url)
         if url.scheme == "http":
             self.port = 80
@@ -291,7 +291,7 @@ class PyNgen():
     def getIncident(self, id):
         res=self._action("/incidents/{}".format(id),"GET")
         if res["status_code"]==200:
-            return res
+            return res["data"]
 
 
     def editIncident (self,id,**kargs):
@@ -331,7 +331,7 @@ class PyNgen():
         if "evidence_file" in kargs:
             files = self._openFile(evidence_file)
         elif "evidence" in kargs:
-            files = {'evidence_file': ("evidence.txt", evidence, 'text/plain', {'Expires': '0'})}
+            files = {'evidence_file': ("evidence.txt", kargs["evidence"], 'text/plain', {'Expires': '0'})}
 
         fail=False
         try:
@@ -341,10 +341,7 @@ class PyNgen():
             raise NewIncidentFieldError(e.msg)
 
 
-
-
     # Bulk insert
-
     def newIncidents(self):
         # To Do
         pass
