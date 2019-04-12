@@ -300,7 +300,7 @@ class PyNgen():
 
 
     # generate new report in Ngen.
-    def newIncident(self, address, incident_feed, incident_type, **kargs):
+    def newIncident(self, address, incident_feed, incident_type, evidence=None, evidence_file=None, **kargs):
         """Qué debería pasar"""
         report = dict(
             type=incident_type,
@@ -310,10 +310,11 @@ class PyNgen():
         report.update(kargs)
 
         files=None
-        if "evidence_file" in kargs:
+        if "evidence_file" in kargs.keys():
             files = self._openFile(evidence_file)
-        elif "evidence" in kargs:
-            files = {'evidence_file': ("evidence.txt", kargs["evidence"], 'text/plain', {'Expires': '0'})}
+        elif "evidence" in kargs.keys():
+            files = {'evidence_file': (
+                "evidence.txt", kargs["evidence"], 'text/plain', {'Expires': '0'})}
 
         fail=False
         try:
