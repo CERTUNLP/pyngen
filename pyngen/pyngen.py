@@ -305,13 +305,12 @@ class PyNgen():
         report.update(kargs)
 
         files = None
-        if "evidence_file" in kargs.keys():
+        if evidence_file:
             files = self._openFile(evidence_file)
-        elif "evidence" in kargs.keys():
+        elif evidence:
             files = {'evidence_file': (
-                "evidence.txt", kargs["evidence"], 'text/plain', {'Expires': '0'})}
+                "evidence.txt", evidence, 'text/plain', {'Expires': '0'})}
 
-        fail = False
         try:
             response = self._action(
                 "/incidents", "POST", data=report, files=files)
@@ -343,7 +342,7 @@ class PyNgen():
                 action), headers=headers, files=files))
 
         self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
-            r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, files, r))
+            r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:30], r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
         elif r.status_code == 404:
