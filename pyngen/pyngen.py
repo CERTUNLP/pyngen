@@ -14,7 +14,7 @@ from .NgenExceptions import *
 
 class PyNgen():
 
-    def __init__(self, url, api_key, incident_format="json", debug=False):
+    def __init__(self, url, api_key, incident_format="json"):
         url = urlparse(url)
         if url.scheme == "http":
             self.port = 80
@@ -26,7 +26,6 @@ class PyNgen():
             raise (SchemeNotSettedError("Please set http/https"))
         if url.port != None:
             self.port = url.port
-        self.debug = debug
         self.api_key = api_key
         self.hostname = url.hostname
         self.path = url.path
@@ -239,7 +238,7 @@ class PyNgen():
             lines = [
                 item for item in lines if not item.startswith(comment)]
 
-        self.logger.info("lines: {}".format(lines))
+        self.logger.debug("lines: {}".format(lines))
 
         # GROUP LINES BY IP
         hosts = {}
@@ -272,7 +271,7 @@ class PyNgen():
             return res["data"]
 
     def editIncident(self, id, **kargs):
-        self.logger.info(kargs, type(kargs))
+        self.logger.debug(kargs, type(kargs))
         report = dict()
         report.update(kargs)
         res = self._action("/incidents/{}".format(id), "PATCH", data=kargs)
@@ -343,8 +342,8 @@ class PyNgen():
             r = (requests.request(method, self._completeUrl(
                 action), headers=headers, files=files))
 
-        self.logger.info("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nresponse: {}\n\n".format(
-            r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, r))
+        self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
+            r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, files, r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
         elif r.status_code == 404:
