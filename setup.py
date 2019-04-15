@@ -5,18 +5,18 @@ with open("README.md", "r") as fh:
 DEPENDENCIES = open('requirements.txt', 'r').read().split('\n')
 
 setuptools.setup(
-     name='pyngen',
-     version='0.1.3',
-     scripts=['pyngen/ngen'],
-     author="CERTUNLP",
-     author_email="soporte@cert.unlp.edu.ar",
-     description="Ngen REST. A python library for using Ngen",
-     long_description=long_description,
-     long_description_content_type="text/markdown",
-     url="https://github.com/CERTUNLP/pyngen",
-     packages=['pyngen'],
-     install_requires=DEPENDENCIES,
-     classifiers=[
-         "Programming Language :: Python :: 3",
-     ],
- )
+    name='pyngen',
+    version='0.1.4',
+    scripts=['pyngen/ngen'],
+    author="CERTUNLP",
+    author_email="soporte@cert.unlp.edu.ar",
+    description="Ngen REST. A python library for using Ngen",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/CERTUNLP/pyngen",
+    packages=['pyngen'],
+    install_requires=DEPENDENCIES,
+    classifiers=[
+        "Programming Language :: Python :: 3",
+    ],
+)
