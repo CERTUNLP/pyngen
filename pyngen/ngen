@@ -11,8 +11,8 @@ parser.add_argument('revs', metavar='function', choices=[
                     "newincident", "init"], help='choice function')
 parser.add_argument("-feed", dest="feed", help="Select feed slug",
                     required='newincident' in sys.argv)
-parser.add_argument("-address", dest="address",
-                    help="IP Address or Domain", required='newincident' in sys.argv)
+parser.add_argument("-address", dest="address", help="IP or Domain",
+                    required='newincident' in sys.argv)
 parser.add_argument("-type", dest="type", help="Select type slug",
                     required='newincident' in sys.argv)
 parser.add_argument("-evidenceFile", dest="evidenceFile",

@@ -14,7 +14,7 @@ from .NgenExceptions import *
 
 class PyNgen():
 
-    def __init__(self, url, api_key, incident_format="json"):
+    def __init__(self, url, apikey, incident_format="json"):
         url = urlparse(url)
         if url.scheme == "http":
             self.port = 80
@@ -26,13 +26,13 @@ class PyNgen():
             raise (SchemeNotSettedError("Please set http/https"))
         if url.port != None:
             self.port = url.port
-        self.api_key = api_key
+        self.apikey = apikey
         self.hostname = url.hostname
         self.path = url.path
         self.incident_format = incident_format
         self.logger = logging.getLogger(__name__)
         # check URL
-        # check api_key
+        # check apikey
         # self.logger.info(self._completeUrl("/incidents"))
         self.checkUrl()
 
@@ -325,7 +325,7 @@ class PyNgen():
         pass
 
     def _completeUrl(self, action):
-        return "{}://{}:{}{}{}.{}?apikey={}".format(self.scheme, self.hostname, self.port, self.path, action, self.incident_format, self.api_key)
+        return "{}://{}:{}{}{}.{}?apikey={}".format(self.scheme, self.hostname, self.port, self.path, action, self.incident_format, self.apikey)
         # TODO: sacar el limit cuando cambie la API
 
     #   Generic action for REST interface
