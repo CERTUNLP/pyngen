@@ -342,7 +342,7 @@ class PyNgen():
                 action), headers=headers, files=files))
 
         self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
-            r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:30], r))
+            r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:200], r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
         elif r.status_code == 404:

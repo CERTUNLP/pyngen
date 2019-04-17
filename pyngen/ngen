@@ -7,17 +7,24 @@ import click
 
 
 parser = ArgumentParser()
-parser.add_argument('revs', metavar='function', choices=["newincident", "init"], help='choice function')
-parser.add_argument("-feed", dest="feed", help="Select feed slug", required='newincident' in sys.argv)
-parser.add_argument("-ip", dest="ip", help="IP" ,required='newincident' in sys.argv)
-parser.add_argument("-type", dest="type", help="Select type slug", required='newincident' in sys.argv)
-parser.add_argument("-evidenceFile", dest="evidenceFile", help="Select path of evidence")
-parser.add_argument("-evidenceText", dest="evidenceText", help="Select text to send as evidence")
+parser.add_argument('revs', metavar='function', choices=[
+                    "newincident", "init"], help='choice function')
+parser.add_argument("-feed", dest="feed", help="Select feed slug",
+                    required='newincident' in sys.argv)
+parser.add_argument("-address", dest="address",
+                    help="IP Address or Domain", required='newincident' in sys.argv)
+parser.add_argument("-type", dest="type", help="Select type slug",
+                    required='newincident' in sys.argv)
+parser.add_argument("-evidenceFile", dest="evidenceFile",
+                    help="Select path of evidence")
+parser.add_argument("-evidenceText", dest="evidenceText",
+                    help="Select text to send as evidence")
 
-parser.add_argument("-key", dest="apikey", help="Set API KEY for init", required='init' in sys.argv)
-parser.add_argument("-url", dest="url", help="Set Ngen URL for init", required='init' in sys.argv)
+parser.add_argument("-apikey", dest="apikey",
+                    help="Set API KEY for init", required='init' in sys.argv)
+parser.add_argument("-url", dest="url",
+                    help="Set Ngen URL for init", required='init' in sys.argv)
 args = parser.parse_args()
-
 
 
 NGEN_CONFIG_DIR = '~/.ngen/'
@@ -33,7 +40,8 @@ COLORIZE_FIELDS = {
 
 ngen_dir = os.path.expanduser(NGEN_CONFIG_DIR)
 
-def inits(url, key):
+
+def inits(url, apikey):
     """Initialize the Ngen command-line"""
     # Create the directory if necessary
     if not os.path.isdir(ngen_dir):
@@ -44,25 +52,24 @@ def inits(url, key):
                 'Unable to create directory to store the Ngen API key ({})'.format(ngen_dir))
 
     # Make sure it's a valid API key
-    url= url.strip()
-    key = key.strip()
+    url = url.strip()
+    apikey = apikey.strip()
     try:
-        api = PyNgen(url, key)
+        api = PyNgen(url, apikey)
         # api.info()
     except pyngen.UnauthorizedNgenError as e:
         raise click.ClickException(e.detail)
 
     # Store the API key in the user's directory
-    keyfile = ngen_dir + '/api_key'
+    keyfile = ngen_dir + '/apikey'
     with open(keyfile, 'w') as fout:
-        fout.write(key)
+        fout.write(apikey)
     os.chmod(keyfile, 0o600)
-    
+
     keyfile = ngen_dir + '/url'
     with open(keyfile, 'w') as fout:
         fout.write(url)
     os.chmod(keyfile, 0o600)
-
 
 
 def createNewIncident(pyngen, address, incident_feed, incident_type, **kargs):
@@ -74,15 +81,14 @@ def createNewIncident(pyngen, address, incident_feed, incident_type, **kargs):
         exit(2)
 
 
-
-if (args.revs=="newincident"):
+if (args.revs == "newincident"):
     try:
-        apikey = open(ngen_dir + '/api_key').read()
-        url= open(ngen_dir + '/url').read()
+        apikey = open(ngen_dir + '/apikey').read()
+        url = open(ngen_dir + '/url').read()
     except:
-        print ("Please use init first")
+        print("Please use init first")
         exit(2)
-    ngen= PyNgen(url,apikey)
-    createNewIncident(ngen, args.ip, args.feed, args.type)
-elif (args.revs=="init"):
-    inits (args.url, args.apikey)
+    ngen = PyNgen(url, apikey)
+    createNewIncident(ngen, args.address, args.feed, args.type)
+elif (args.revs == "init"):
+    inits(args.url, args.apikey)
