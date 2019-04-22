@@ -199,14 +199,20 @@ class PyNgen():
         # =Group by IP=
         reports = {}
         for row in reader:
-            reports.setdefault(address_header, []).append(row)
+            print('++++++++++++++++++++++++++')
+            print(row[address_header])
+            reports.setdefault(row[address_header], []).append(row.values())
 
-        for address, lines in reports.items():
-            evidence = '\n'.join(lines)
+        self.logger.debug(reports)
+        for address, evidence in reports.items():
+            #evidence = '\n'.join(lines)
+            evfile = StringIO()
+            evidencecsv = csv.writer(evfile).writerows(evidence)
+            evidence = evfile.getvalue()
             self.logger.debug(address)
             self.logger.debug(evidence)
             self.newIncident(address, incident_feed,
-                             incident_type, evidence=evidence)
+                             incident_type, evidence_text=evidence)
 
     def reportFromPathCSV(self, csv_path, incident_feed, incident_type, address_header, delimiter=','):
         with open(csv_path, newline='') as csv_file:
