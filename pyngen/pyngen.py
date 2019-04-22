@@ -8,6 +8,7 @@ import magic
 import re
 import tempfile
 import os
+from io import StringIO
 from urllib.parse import urlsplit, urlparse
 from .NgenExceptions import *
 
@@ -191,46 +192,47 @@ class PyNgen():
             "evidence.txt", data, mimetype, {'Expires': '0'})}
         return files
 
-    def reportFromFileCSV(self, csv_path, feed, type, ip_header, delimiter=',',  is_domain=False):
-        with open(csv_path, newline='') as csvfile:
-            reader = csv.DictReader(csvfile, delimiter=delimiter)
+    def reportFromFileCSV(self, csv_file, incident_feed, incident_type, address_header, delimiter=','):
+        self.logger.debug("In reportFromFileCSV: {} {} {}".format(
+            incident_feed, incident_type, address_header))
+        reader = csv.DictReader(csv_file, delimiter=delimiter)
+        # =Group by IP=
+        reports = {}
+        for row in reader:
+            reports.setdefault(address_header, []).append(row)
 
-            # =Group by IP=
-            reports = {}
-            for row in reader:
-                if not row[ip_header] in reports.keys():
-                    reports[row[ip_header]] = []
-                reports[row[ip_header]].append(row)
-            # ==============
+        for address, lines in reports.items():
+            evidence = '\n'.join(lines)
+            self.logger.debug(address)
+            self.logger.debug(evidence)
+            self.newIncident(address, incident_feed,
+                             incident_type, evidence=evidence)
 
-        # =Convert evidence to csv and report=
-        for ip, dicts in reports.items():
-            keys = reports[ip][0].keys()
-            with tempfile.NamedTemporaryFile("w", delete=False) as output_file:
-                path = output_file.name
-                dict_writer = csv.DictWriter(output_file, keys)
-                dict_writer.writeheader()
-                dict_writer.writerows(reports[ip])
-            self.reportFromFile(ip, feed, type, path)
-            os.remove(path)
-        # =========
+    def reportFromPathCSV(self, csv_path, incident_feed, incident_type, address_header, delimiter=','):
+        with open(csv_path, newline='') as csv_file:
+            self.reportFromFileCSV(
+                csv_file, incident_feed, incident_type, address_header, delimiter=delimiter)
 
-    def reportFromCSV(self, incident_type, feed, text_file, header_pos_start, header_pos_end, evidence_pos_start, ip_pos, separtor, separator_desired=',', line_separator=None, is_domain=False, comment=None):
+    def reportFromCSVText(self, incident_type, incident_feed, address_header, csv_text):
+        self.reportFromFileCSV(StringIO(csv_text),
+                               incident_type, incident_feed, address_header)
+
+    def reportFromMalformedCSV(self, incident_type, incident_feed, csv_text, header_pos_start, header_pos_end, evidence_pos_start, address_pos, delimiter, delimiter_desired=',', line_delimiter=None, comment=None):
         # TODO: revisar que todos los feeds y tipos de incidentes existan
-        if type(text_file) == bytes:
-            text_file = text_file.decode('utf-8')
+        if type(csv_text) == bytes:
+            csv_text = csv_text.decode('utf-8')
 
-        if not line_separator:
-            if '\r\n' in text_file:
-                line_separator = '\r\n'
+        if not line_delimiter:
+            if '\r\n' in csv_text:
+                line_delimiter = '\r\n'
             else:
-                line_separator = '\n'
+                line_delimiter = '\n'
 
-        new_data = text_file.strip().split(line_separator)
+        new_data = csv_text.strip().split(line_delimiter)
         header = new_data[header_pos_start:header_pos_end]
 
         reports = new_data[evidence_pos_start:]
-        lines = [item.replace(separtor, separator_desired)
+        lines = [item.replace(delimiter, delimiter_desired)
                  for item in reports]
 
         # remove comments:
@@ -244,24 +246,19 @@ class PyNgen():
         hosts = {}
         for line in lines:
             # Separo evidencias por hosts
-            l = line.split(separator_desired)
-            if is_domain:
-                domain = urlsplit(l[ip_pos]).hostname
-                ip = socket.gethostbyname(domain)
+            l = line.split(delimiter_desired)
+            address = l[address_pos]
+            if address in hosts:
+                hosts[address].append(line)
             else:
-                net_cleaned = re.sub(r'[^0-9./]', "", l[ip_pos])
-                net = net_cleaned.split('/')
-                ip = net[0]
-            if ip in hosts:
-                hosts[ip].append(line)
-            else:
-                hosts[ip] = [line]
+                hosts[address] = [line]
 
         # REPORTAR
-        for ip, evidence in hosts.items():
+        for address, evidence in hosts.items():
             parsed_evidence = "{}\n{}".format(
                 '\n'.join(header), '\n'.join(evidence))
-            self.newIncident(ip, feed, incident_type, evidence=parsed_evidence)
+            self.newIncident(address, incident_feed, incident_type,
+                             evidence=parsed_evidence)
 
     # get incident by id
 
@@ -295,7 +292,7 @@ class PyNgen():
 
     # generate new report in Ngen.
 
-    def newIncident(self, address, incident_feed, incident_type, evidence=None, evidence_file=None, **kargs):
+    def newIncident(self, address, incident_feed, incident_type, evidence_text=None, evidence_file=None, **kargs):
         """Qué debería pasar"""
         report = dict(
             type=incident_type,
@@ -307,9 +304,9 @@ class PyNgen():
         files = None
         if evidence_file:
             files = self._openFile(evidence_file)
-        elif evidence:
+        elif evidence_text:
             files = {'evidence_file': (
-                "evidence.txt", evidence, 'text/plain', {'Expires': '0'})}
+                "evidence.txt", evidence_text, 'text/plain', {'Expires': '0'})}
 
         try:
             response = self._action(

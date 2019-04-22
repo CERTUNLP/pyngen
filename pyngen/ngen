@@ -15,10 +15,12 @@ parser.add_argument("-address", dest="address", help="IP or Domain",
                     required='newincident' in sys.argv)
 parser.add_argument("-type", dest="type", help="Select type slug",
                     required='newincident' in sys.argv)
-parser.add_argument("-evidenceFile", dest="evidenceFile",
-                    help="Select path of evidence")
-parser.add_argument("-evidenceText", dest="evidenceText",
-                    help="Select text to send as evidence")
+
+evidence_group = parser.add_mutually_exclusive_group()
+evidence_group.add_argument("-evidenceFile", dest="evidenceFile",
+                            help="Select path of evidence")
+evidence_group.add_argument("-evidenceText", dest="evidenceText",
+                            help="Select text to send as evidence", default=None)
 
 parser.add_argument("-apikey", dest="apikey",
                     help="Set API KEY for init", required='init' in sys.argv)
@@ -74,7 +76,8 @@ def inits(url, apikey):
 
 def createNewIncident(pyngen, address, incident_feed, incident_type, **kargs):
     try:
-        res = pyngen.newIncident(address, incident_feed, incident_type)
+        res = pyngen.newIncident(
+            address, incident_feed, incident_type, **kargs)
         print("Added incident ID: {}".format(res))
     except NewIncidentFieldError as e:
         print("Error creating incident: \n{}".format(e.detail))
@@ -88,7 +91,9 @@ if (args.revs == "newincident"):
     except:
         print("Please use init first")
         exit(2)
+
     ngen = PyNgen(url, apikey)
-    createNewIncident(ngen, args.address, args.feed, args.type)
+    createNewIncident(ngen, args.address, args.feed,
+                      args.type, evidence_text=args.evidenceText, evidence_file=args.evidenceFile)
 elif (args.revs == "init"):
     inits(args.url, args.apikey)
