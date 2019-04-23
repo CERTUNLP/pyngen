@@ -199,15 +199,16 @@ class PyNgen():
         # =Group by IP=
         reports = {}
         for row in reader:
-            print('++++++++++++++++++++++++++')
-            print(row[address_header])
-            reports.setdefault(row[address_header], []).append(row.values())
+            self.logger.debug(row)
+            reports.setdefault(row[address_header], []).append(row)
 
         self.logger.debug(reports)
         for address, evidence in reports.items():
             #evidence = '\n'.join(lines)
             evfile = StringIO()
-            evidencecsv = csv.writer(evfile).writerows(evidence)
+            evidencecsv = csv.DictWriter(evfile, sorted(evidence[0].keys()))
+            evidencecsv.writeheader()
+            evidencecsv.writerows(evidence)
             evidence = evfile.getvalue()
             self.logger.debug(address)
             self.logger.debug(evidence)
@@ -219,11 +220,12 @@ class PyNgen():
             self.reportFromFileCSV(
                 csv_file, incident_feed, incident_type, address_header, delimiter=delimiter)
 
-    def reportFromCSVText(self, incident_type, incident_feed, address_header, csv_text):
+    def reportFromCSVText(self, csv_text, incident_feed, incident_type, address_header):
+        self.logger.debug("Converting to StringIO: {}".format(csv_text))
         self.reportFromFileCSV(StringIO(csv_text),
-                               incident_type, incident_feed, address_header)
+                               incident_feed, incident_type, address_header)
 
-    def reportFromMalformedCSV(self, incident_type, incident_feed, csv_text, header_pos_start, header_pos_end, evidence_pos_start, address_pos, delimiter, delimiter_desired=',', line_delimiter=None, comment=None):
+    def reportFromMalformedCSV(self, csv_text, incident_feed, incident_type, header_pos_start, header_pos_end, evidence_pos_start, address_pos, delimiter, delimiter_desired=',', line_delimiter=None, comment=None):
         # TODO: revisar que todos los feeds y tipos de incidentes existan
         if type(csv_text) == bytes:
             csv_text = csv_text.decode('utf-8')
