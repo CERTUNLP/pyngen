@@ -266,7 +266,7 @@ class PyNgen():
             parsed_evidence = "{}\n{}".format(
                 '\n'.join(header), '\n'.join(evidence))
             self.newIncident(address, incident_feed, incident_type,
-                             evidence=parsed_evidence)
+                             evidence_text=parsed_evidence)
 
     # get incident by id
 
