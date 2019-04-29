@@ -319,6 +319,9 @@ class PyNgen():
         try:
             response = self._action(
                 "/incidents", "POST", data=report, files=files)
+            if response['status_code'] != 201:
+                raise UnexpectedError(
+                    response['status_code'], "Unexpected status code. {}".format(response['data']))
             return response["data"][0]["id"]
         except UnexpectedError as e:
             raise NewIncidentFieldError(e.msg)
