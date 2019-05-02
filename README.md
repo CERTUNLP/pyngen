@@ -39,3 +39,8 @@ ngen init -apikey <apikey>  -url https://<ngenurl>/api
 ```bash
 ngen newincident -feed shodan -address 163.10.0.2 -type open_dns
 ```
+
+```bash
+ngen reportcsv -feed external_report -type miner -path path/to/file.csv  -addressheader ip
+```
+
