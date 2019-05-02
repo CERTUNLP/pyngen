@@ -48,7 +48,7 @@ csv_group.add_argument("-path", dest="pathcsv",
 csv_group.add_argument("-addressheader", dest="address_header",
                     help="Set CSV Address field", required='reportcsv' in sys.argv)
 csv_group.add_argument("-delimiter", dest="delimiter",
-                    help="(Optional, default comma) Set delimiter for CSV. For TAB use $'\\t'", default=",")
+                    help="(Optional) Set delimiter for CSV. For TAB use $'\\t'", default=None)
 
 
 #reportFromPathCSV

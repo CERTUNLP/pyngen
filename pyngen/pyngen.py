@@ -192,10 +192,16 @@ class PyNgen():
             "evidence.txt", data, mimetype, {'Expires': '0'})}
         return files
 
-    def reportFromFileCSV(self, csv_file, incident_feed, incident_type, address_header, delimiter=','):
+    def reportFromFileCSV(self, csv_file, incident_feed, incident_type, address_header, delimiter=None):
         self.logger.debug("In reportFromFileCSV: {} {} {}".format(
             incident_feed, incident_type, address_header))
+        if not delimiter:
+            dialect = csv.Sniffer().sniff(csv_file.read(1024), delimiters="\t;, :")
+            csv_file.seek(0)
+            delimiter= (dialect.delimiter)
+
         reader = csv.DictReader(csv_file, delimiter=delimiter)
+
         # =Group by IP=
         reports = {}
         for row in reader:
