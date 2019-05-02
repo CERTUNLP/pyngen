@@ -6,26 +6,52 @@ import sys
 import click
 
 
-parser = ArgumentParser()
-parser.add_argument('revs', metavar='function', choices=[
-                    "newincident", "init"], help='choice function')
-parser.add_argument("-feed", dest="feed", help="Select feed slug",
-                    required='newincident' in sys.argv)
-parser.add_argument("-address", dest="address", help="IP or Domain",
-                    required='newincident' in sys.argv)
-parser.add_argument("-type", dest="type", help="Select type slug",
-                    required='newincident' in sys.argv)
+parser = ArgumentParser(formatter_class=RawTextHelpFormatter, epilog="""
+EXAMPLES:
+%(prog)s init -apikey 0123456789abcdef -url https://ngen.example.com/api
+%(prog)s newincident -feed external_report -type malware -address ip.or.domain.com
+%(prog)s reportcsv -feed external_report -type miner -path path/to/file.csv  -addressheader ip""")
 
-evidence_group = parser.add_mutually_exclusive_group()
+parser.add_argument('revs', metavar='action', choices=[
+                    "newincident", "init", "reportcsv"], help='Set action: %(choices)s')
+
+newincident_group = parser.add_argument_group('newincident arguments')
+
+feed = newincident_group.add_argument("-feed", dest="feed", help="Select feed slug",
+required='newincident' in sys.argv or 'reportcsv' in sys.argv)
+
+type = newincident_group.add_argument("-type", dest="type", help="Select type slug",
+required='newincident' in sys.argv or 'reportcsv' in sys.argv)
+
+newincident_group.add_argument("-address", dest="address", help="IP or Domain", required='newincident' in sys.argv)
+
+evidence_group = newincident_group.add_mutually_exclusive_group()
 evidence_group.add_argument("-evidenceFile", dest="evidenceFile",
                             help="Select path of evidence")
 evidence_group.add_argument("-evidenceText", dest="evidenceText",
                             help="Select text to send as evidence", default=None)
 
-parser.add_argument("-apikey", dest="apikey",
+init_group = parser.add_argument_group('init arguments')
+
+init_group.add_argument("-apikey", dest="apikey",
                     help="Set API KEY for init", required='init' in sys.argv)
-parser.add_argument("-url", dest="url",
+init_group.add_argument("-url", dest="url",
                     help="Set Ngen URL for init", required='init' in sys.argv)
+
+csv_group = parser.add_argument_group('reportcsv arguments')
+
+csv_group._group_actions.append(feed)
+csv_group._group_actions.append(type)
+
+csv_group.add_argument("-path", dest="pathcsv",
+                    help="Set Path of CSV file", required='reportcsv' in sys.argv)
+csv_group.add_argument("-addressheader", dest="address_header",
+                    help="Set CSV Address field", required='reportcsv' in sys.argv)
+csv_group.add_argument("-delimiter", dest="delimiter",
+                    help="(Optional, default comma) Set delimiter for CSV. For TAB use $'\\t'", default=",")
+
+
+#reportFromPathCSV
 args = parser.parse_args()
 
 
@@ -83,17 +109,29 @@ def createNewIncident(pyngen, address, incident_feed, incident_type, **kargs):
         print("Error creating incident: \n{}".format(e.detail))
         exit(2)
 
+def addFromCSV(ngen, csv_path, incident_feed, incident_type, address_header, delimiter):
+    ngen.reportFromPathCSV(csv_path, incident_feed, incident_type, address_header, delimiter= delimiter)
 
-if (args.revs == "newincident"):
+
+def getpyngen():
     try:
         apikey = open(ngen_dir + '/apikey').read()
         url = open(ngen_dir + '/url').read()
     except:
         print("Please use init first")
         exit(2)
+    return PyNgen(url, apikey)
 
-    ngen = PyNgen(url, apikey)
+
+
+
+if (args.revs == "newincident"):
+    ngen = getpyngen()
     createNewIncident(ngen, args.address, args.feed,
                       args.type, evidence_text=args.evidenceText, evidence_file=args.evidenceFile)
 elif (args.revs == "init"):
     inits(args.url, args.apikey)
+
+elif (args.revs == "reportcsv"):
+    ngen = getpyngen()
+    addFromCSV(ngen, args.pathcsv, args.feed, args.type, args.address_header, args.delimiter)
