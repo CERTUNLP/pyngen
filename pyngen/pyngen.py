@@ -197,14 +197,16 @@ class PyNgen():
         self.logger.debug("In reportFromFileCSV: {} {} {}".format(
             incident_feed, incident_type, address_header))
         if not delimiter:
-			try:
-				dialect = csv.Sniffer().sniff(csv_file.read(), delimiters="\t;, :")
-				csv_file.seek(0)
-				delimiter = (dialect.delimiter)
-				self.logger.info("using autodetect delimiter: {}".format(delimiter))
-			except _csv.error:
-				delimiter=","
-				self.logger.info("autodetect delimiter failed. using default delimiter ','")
+            try:
+                dialect = csv.Sniffer().sniff(csv_file.read(), delimiters="\t;, :")
+                csv_file.seek(0)
+                delimiter = (dialect.delimiter)
+                self.logger.info(
+                    "using autodetect delimiter: {}".format(delimiter))
+            except _csv.Error:
+                delimiter = ","
+                self.logger.warn(
+                    "autodetect delimiter failed. using default delimiter ','")
 
         reader = csv.DictReader(csv_file, delimiter=delimiter)
 
@@ -227,15 +229,15 @@ class PyNgen():
             self.newIncident(address, incident_feed,
                              incident_type, evidence_text=evidence)
 
-    def reportFromPathCSV(self, csv_path, incident_feed, incident_type, address_header, delimiter=','):
+    def reportFromPathCSV(self, csv_path, incident_feed, incident_type, address_header, delimiter=None):
         with open(csv_path, newline='') as csv_file:
             self.reportFromFileCSV(
                 csv_file, incident_feed, incident_type, address_header, delimiter=delimiter)
 
-    def reportFromCSVText(self, csv_text, incident_feed, incident_type, address_header):
+    def reportFromCSVText(self, csv_text, incident_feed, incident_type, address_header, delimiter=None):
         self.logger.debug("Converting to StringIO: {}".format(csv_text))
         self.reportFromFileCSV(StringIO(csv_text),
-                               incident_feed, incident_type, address_header)
+                               incident_feed, incident_type, address_header, delimiter=delimiter)
 
     def reportFromMalformedCSV(self, csv_text, incident_feed, incident_type, header_pos_start, header_pos_end, evidence_pos_start, address_pos, delimiter, delimiter_desired=',', line_delimiter=None, comment=None):
         # TODO: revisar que todos los feeds y tipos de incidentes existan
