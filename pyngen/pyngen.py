@@ -198,7 +198,7 @@ class PyNgen():
         if not delimiter:
             dialect = csv.Sniffer().sniff(csv_file.read(1024), delimiters="\t;, :")
             csv_file.seek(0)
-            delimiter= (dialect.delimiter)
+            delimiter = (dialect.delimiter)
 
         reader = csv.DictReader(csv_file, delimiter=delimiter)
 
@@ -339,12 +339,12 @@ class PyNgen():
         pass
 
     def _completeUrl(self, action):
-        return "{}://{}:{}{}{}.{}?apikey={}".format(self.scheme, self.hostname, self.port, self.path, action, self.incident_format, self.apikey)
+        return "{}://{}:{}{}{}.{}".format(self.scheme, self.hostname, self.port, self.path, action, self.incident_format)
         # TODO: sacar el limit cuando cambie la API
 
     #   Generic action for REST interface
     def _action(self, action, method, data=None, files=None):
-        headers = {}
+        headers = {"apikey": self.apikey}
         if method == "POST":
             r = requests.post(self._completeUrl(
                 action), headers=headers, files=files, data=data)
