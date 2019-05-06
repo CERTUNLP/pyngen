@@ -2,6 +2,7 @@
 import requests
 import logging
 import csv
+import _csv
 import json
 import socket
 import magic
@@ -196,9 +197,14 @@ class PyNgen():
         self.logger.debug("In reportFromFileCSV: {} {} {}".format(
             incident_feed, incident_type, address_header))
         if not delimiter:
-            dialect = csv.Sniffer().sniff(csv_file.read(1024), delimiters="\t;, :")
-            csv_file.seek(0)
-            delimiter = (dialect.delimiter)
+			try:
+				dialect = csv.Sniffer().sniff(csv_file.read(), delimiters="\t;, :")
+				csv_file.seek(0)
+				delimiter = (dialect.delimiter)
+				self.logger.info("using autodetect delimiter: {}".format(delimiter))
+			except _csv.error:
+				delimiter=","
+				self.logger.info("autodetect delimiter failed. using default delimiter ','")
 
         reader = csv.DictReader(csv_file, delimiter=delimiter)
 
