@@ -16,7 +16,7 @@ from .NgenExceptions import *
 
 class PyNgen():
 
-    def __init__(self, url, apikey, incident_format="json"):
+    def __init__(self, url, apikey, incident_format="json", debug=False):
         url = urlparse(url)
         if url.scheme == "http":
             self.port = 80
@@ -33,6 +33,13 @@ class PyNgen():
         self.path = url.path
         self.incident_format = incident_format
         self.logger = logging.getLogger(__name__)
+        if debug:
+            ch = logging.StreamHandler()
+            ch.setLevel(logging.DEBUG)
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            ch.setFormatter(formatter)
+            self.logger.addHandler(ch)
         # check URL
         # check apikey
         # self.logger.info(self._completeUrl("/incidents"))
@@ -178,9 +185,7 @@ class PyNgen():
     # luego de eso chequear compatibilidad de versiones API/ngen
 
     def checkUrl(self):
-        # Acá debería ir get_status ó get_version
-        self.getActiveFeeds()
-        # To Do
+        return self._action("status/ngen/status", "GET")
 
     def _openFile(self, evidence_path):
         mime = magic.Magic(mime=True)
