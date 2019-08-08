@@ -131,7 +131,7 @@ class PyNgen():
     # ==============================================
 
     def _getIncidentTypes(self):
-        return self._action("/incidents/incident/types", "GET")['data']
+        return self._action("/incidents/types", "GET")['data']
 
     def getIncidentTypes(self, field=None):
         data = self._getIncidentTypes()
