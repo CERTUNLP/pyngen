@@ -372,20 +372,39 @@ class PyNgen():
         return "{}://{}:{}{}{}.{}".format(self.scheme, self.hostname, self.port, self.path, action, self.incident_format)
         # TODO: sacar el limit cuando cambie la API
 
-    #   Generic action for REST interface
-    def _action(self, action, method, data=None, files=None):
+    def _req(self, action, method, data=None, files=None):
         headers = {"apikey": self.apikey}
         session = retry_session(retries=3)
         if method == "POST":
-            r = session.post(self._completeUrl(
-                action), headers=headers, files=files, data=data, timeout=5)
+            try:
+                return session.post(self._completeUrl(
+                    action), headers=headers, files=files, data=data, timeout=5)
+            except requests.exceptions.ReadTimeout:
+                self.logger.error("Timeout")
+                return
         elif method == "PATCH":
-            r = session.request(method, self._completeUrl(
-                action), headers=headers, data=data, timeout=5)
+            try:
+                return session.request(method, self._completeUrl(
+                    action), headers=headers, data=data)
+            except requests.exceptions.ReadTimeout:
+                self.logger.error("Timeout")
+                return
         else:
-            r = (session.request(method, self._completeUrl(
-                action), headers=headers, files=files, timeout=5))
+            try:
+                return session.request(method, self._completeUrl(
+                    action), headers=headers, files=files)
+            except requests.exceptions.ReadTimeout:
+                self.logger.error("Timeout")
+                return
 
+
+
+    #   Generic action for REST interface
+    def _action(self, action, method, data=None, files=None):
+        for i in range(5):
+            r = self._req(action, method, data, files)
+            if r:
+                break
         self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
             r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:200], r))
         if r.status_code == 401:
