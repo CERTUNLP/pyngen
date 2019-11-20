@@ -12,6 +12,23 @@ import os
 from io import StringIO
 from urllib.parse import urlsplit, urlparse
 from .NgenExceptions import *
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+
+
+def retry_session(retries, session=None, backoff_factor=0.3, status_forcelist=(500, 502, 503, 504)):
+    session = session or requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
 
 
 class PyNgen():
@@ -358,15 +375,16 @@ class PyNgen():
     #   Generic action for REST interface
     def _action(self, action, method, data=None, files=None):
         headers = {"apikey": self.apikey}
+        session = retry_session(retries=3)
         if method == "POST":
-            r = requests.post(self._completeUrl(
-                action), headers=headers, files=files, data=data)
+            r = session.post(self._completeUrl(
+                action), headers=headers, files=files, data=data, timeout=5)
         elif method == "PATCH":
-            r = requests.request(method, self._completeUrl(
-                action), headers=headers, data=data)
+            r = session.request(method, self._completeUrl(
+                action), headers=headers, data=data, timeout=5)
         else:
-            r = (requests.request(method, self._completeUrl(
-                action), headers=headers, files=files))
+            r = (session.request(method, self._completeUrl(
+                action), headers=headers, files=files, timeout=5))
 
         self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
             r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:200], r))
