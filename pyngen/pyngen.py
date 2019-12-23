@@ -372,27 +372,28 @@ class PyNgen():
         return "{}://{}:{}{}{}.{}".format(self.scheme, self.hostname, self.port, self.path, action, self.incident_format)
         # TODO: sacar el limit cuando cambie la API
 
-    def _req(self, action, method, data=None, files=None):
+     def _req(self, action, method, data=None, files=None):
         headers = {"apikey": self.apikey}
         session = retry_session(retries=3)
+        timeout = 5
         if method == "POST":
             try:
                 return session.post(self._completeUrl(
-                    action), headers=headers, files=files, data=data, timeout=5)
+                    action), headers=headers, files=files, data=data, timeout=timeout)
             except requests.exceptions.ReadTimeout:
                 self.logger.error("Timeout")
                 return
         elif method == "PATCH":
             try:
                 return session.request(method, self._completeUrl(
-                    action), headers=headers, data=data)
+                    action), headers=headers, data=data, timeout=timeout)
             except requests.exceptions.ReadTimeout:
                 self.logger.error("Timeout")
                 return
         else:
             try:
                 return session.request(method, self._completeUrl(
-                    action), headers=headers, files=files)
+                    action), headers=headers, files=files, timeout=timeout)
             except requests.exceptions.ReadTimeout:
                 self.logger.error("Timeout")
                 return
