@@ -202,7 +202,7 @@ class PyNgen():
     # luego de eso chequear compatibilidad de versiones API/ngen
 
     def checkUrl(self):
-        return self._action("/status/ngen/status", "GET")
+        return self._action("/status", "GET")
 
     def _openFile(self, evidence_path):
         mime = magic.Magic(mime=True)
