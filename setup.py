@@ -6,7 +6,7 @@ DEPENDENCIES = open('requirements.txt', 'r').read().split('\n')
 
 setuptools.setup(
     name='pyngen',
-    version='0.1.30',
+    version='0.1.40',
     scripts=['pyngen/ngen'],
     author="CERTUNLP",
     author_email="soporte@cert.unlp.edu.ar",
