@@ -10,6 +10,7 @@ import re
 import tempfile
 import os
 from io import StringIO
+from slugify import slugify
 from urllib.parse import urlsplit, urlparse
 from .NgenExceptions import *
 from urllib3.util.retry import Retry
@@ -159,7 +160,10 @@ class PyNgen():
                 if self._isActive(elem)]
         return self._selectField(data, field)
 
-    def newIncidentType(self, name):
+    def _getSlugFor(self, name):
+        return slugify(name, separator="_")
+
+    def newIncidentType(self, name, slug=None):
         """
         Creates a new Incident type with name.
         Keyword arguments:
@@ -336,10 +340,10 @@ class PyNgen():
 
     # generate new report in Ngen.
 
-    def newIncident(self, address, incident_feed, incident_type, evidence_text=None, evidence_file=None, **kargs):
+    def newIncident(self, address, incident_feed, incident_type, evidence_text=None, evidence_file=None, create_type=False, **kargs):
         """Qué debería pasar"""
         report = dict(
-            type=incident_type,
+            type=self._getSlugFor(incident_type),
             address=address,
             feed=incident_feed
         )
@@ -355,12 +359,21 @@ class PyNgen():
         try:
             response = self._action(
                 "/incidents", "POST", data=report, files=files)
-            if response['status_code'] != 201:
-                raise UnexpectedError(
-                    response['status_code'], "Unexpected status code. {}".format(response['data']))
-            return response["data"][0]["id"]
-        except UnexpectedError as e:
-            raise NewIncidentFieldError(e.msg)
+        except NewIncidentTypeFieldError as e:
+            if not create_type:
+                raise e
+            else:
+                self.newIncidentType(incident_type)
+                response = self._action(
+                    "/incidents", "POST", data=report, files=files)
+        # try:
+        #     if response['status_code'] != 201:
+        #         raise UnexpectedError(
+        #             response['status_code'], "Unexpected status code. {}".format(response['data']))
+        #     return response["data"][0]["id"]
+        # except UnexpectedError as e:
+        #     raise NewIncidentFieldError(report, e.msg)
+        return response["data"][0]["id"]
 
     # Bulk insert
 
@@ -412,6 +425,22 @@ class PyNgen():
             raise UnauthorizedNgenError()
         elif r.status_code == 404:
             raise NotFoundError()
+        elif r.status_code == 400:
+            try:
+                rdata = json.loads(r.text)
+            except:
+                raise Exception('Response code 400. Cannot parse response from Ngen as json: {}'.format(r.text))
+
+            if not 'errors' in rdata:
+                raise UnexpectedError(
+                    r.status_code, "Unexpected response (errors not in response). {}".format(rdata))
+            elif not 'fields' in rdata['errors']:
+                raise UnexpectedError(
+                    r.status_code, "Unexpected response (fields not in errors). {}".format(rdata))
+            elif 'type' in rdata['errors']['fields']:
+                raise NewIncidentTypeFieldError(data, rdata)
+
+            raise NewIncidentFieldError(data, rdata)
         # Temporal
         # ==========
         elif r.status_code == 204:
@@ -420,5 +449,5 @@ class PyNgen():
         elif not r.status_code in [200, 201, 204]:
             raise UnexpectedError(r.status_code, r.text)
 
-        data = json.loads(r.text)
-        return {"status_code": r.status_code, "data": data}
+        rdata = json.loads(r.text)
+        return {"status_code": r.status_code, "data": rdata}
