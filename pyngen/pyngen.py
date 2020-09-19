@@ -324,7 +324,7 @@ class PyNgen():
 
     # generate new report in Ngen.
 
-    def newIncident(self, address, incident_feed, incident_type, evidence_text=None, evidence_file=None, create_type=False, **kargs):
+    def newIncident(self, address, incident_feed, incident_type, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
         """Qué debería pasar"""
         report = dict(
             type=self._getSlugFor(incident_type),
@@ -342,7 +342,7 @@ class PyNgen():
 
         try:
             response = self._action(
-                "/incidents", "POST", data=report, files=files)
+                "/incidents", "POST", data=report, files=files, retries=retries)
         except NewIncidentTypeFieldError as e:
             if not create_type:
                 raise e
@@ -351,7 +351,7 @@ class PyNgen():
                 self.newIncidentType(incident_type)
                 self.logger.error('Type created. Trying to add incident again.')
                 response = self._action(
-                    "/incidents", "POST", data=report, files=files)
+                    "/incidents", "POST", data=report, files=files, retries=retries)
         # try:
         #     if response['status_code'] != 201:
         #         raise UnexpectedError(
@@ -389,11 +389,14 @@ class PyNgen():
         return session, res        
 
     #   Generic action for REST interface
-    def _action(self, action, method, data=None, files=None):
-        try:
-            s, r = self._req(action, method, data, files)
-        except requests.exceptions.ReadTimeout as e:
-            raise e
+    def _action(self, action, method, data=None, files=None, retries=1):
+        for i in range(retries):
+            try:
+                s, r = self._req(action, method, data=data, files=files)
+                break
+            except requests.exceptions.ReadTimeout as e:
+                if i >= retries-1:
+                    raise e
         
         self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
             r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:200], r))
