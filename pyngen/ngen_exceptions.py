@@ -80,5 +80,5 @@ class NewIncidentError(NgenError):
 
 
 
-class NotFoundError(NgenError):
-    detail = "Object not found"
+# class NotFoundError(NgenError):
+#     detail = "Object not found"

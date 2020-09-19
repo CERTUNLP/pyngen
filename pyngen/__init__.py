@@ -1,2 +1,2 @@
-from .pyngen import *
-from .NgenExceptions import *
+from .pyngen import PyNgen
+from .ngen_exceptions import *

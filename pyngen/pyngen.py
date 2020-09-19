@@ -12,24 +12,8 @@ import os
 from io import StringIO
 from slugify import slugify
 from urllib.parse import urlsplit, urlparse
-from .NgenExceptions import *
-from urllib3.util.retry import Retry
-from requests.adapters import HTTPAdapter
-
-
-def retry_session(retries, session=None, backoff_factor=0.3, status_forcelist=(500, 502, 503, 504)):
-    session = session or requests.Session()
-    retry = Retry(
-        total=retries,
-        read=retries,
-        connect=retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=status_forcelist,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-    return session
+from .ngen_exceptions import *
+from .lib import *
 
 
 class PyNgen():
@@ -415,8 +399,8 @@ class PyNgen():
             r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:200], r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
-        elif r.status_code == 404:
-            raise NotFoundError()
+        # elif r.status_code == 404:
+        #     raise NotFoundError()
         elif r.status_code == 400:
             try:
                 rdata = json.loads(r.text)
