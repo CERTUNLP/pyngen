@@ -363,7 +363,9 @@ class PyNgen():
             if not create_type:
                 raise e
             else:
+                self.logger.error('Creating new type: {}, slug must going to be: {}'.format(incident_type, self._getSlugFor(incident_type)))
                 self.newIncidentType(incident_type)
+                self.logger.error('Type created. Trying to add incident again.')
                 response = self._action(
                     "/incidents", "POST", data=report, files=files)
         # try:
@@ -389,36 +391,26 @@ class PyNgen():
         headers = {"apikey": self.apikey}
         session = retry_session(retries=3)
         timeout = 5
+        kwargs = {"headers": headers, "timeout": timeout}
+        
         if method == "POST":
-            try:
-                return session.post(self._completeUrl(
-                    action), headers=headers, files=files, data=data, timeout=timeout)
-            except requests.exceptions.ReadTimeout:
-                self.logger.error("Timeout")
-                return
+            kwargs['data'] = data
+            kwargs['files'] = files
         elif method == "PATCH":
-            try:
-                return session.request(method, self._completeUrl(
-                    action), headers=headers, data=data, timeout=timeout)
-            except requests.exceptions.ReadTimeout:
-                self.logger.error("Timeout")
-                return
+            kwargs['data'] = data
         else:
-            try:
-                return session.request(method, self._completeUrl(
-                    action), headers=headers, files=files, timeout=timeout)
-            except requests.exceptions.ReadTimeout:
-                self.logger.error("Timeout")
-                return
+            kwargs['files'] = files
 
-
+        res = session.request(method, self._completeUrl(action), **kwargs)
+        return session, res        
 
     #   Generic action for REST interface
     def _action(self, action, method, data=None, files=None):
-        for i in range(5):
-            r = self._req(action, method, data, files)
-            if r:
-                break
+        try:
+            s, r = self._req(action, method, data, files)
+        except requests.exceptions.ReadTimeout as e:
+            raise e
+        
         self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
             r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:200], r))
         if r.status_code == 401:
@@ -438,6 +430,7 @@ class PyNgen():
                 raise UnexpectedError(
                     r.status_code, "Unexpected response (fields not in errors). {}".format(rdata))
             elif 'type' in rdata['errors']['fields']:
+                self.logger.debug('Incident type already exists.')
                 raise NewIncidentTypeFieldError(data, rdata)
 
             raise NewIncidentFieldError(data, rdata)
