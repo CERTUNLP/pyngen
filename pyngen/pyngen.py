@@ -18,7 +18,7 @@ from .lib import *
 
 class PyNgen():
 
-    def __init__(self, url, apikey, incident_format="json", debug=False):
+    def __init__(self, url, apikey, incident_format="json", debug=False, timeout=5):
         url = urlparse(url)
         if url.scheme == "http":
             self.port = 80
@@ -35,6 +35,7 @@ class PyNgen():
         self.path = url.path
         self.incident_format = incident_format
         self.logger = logging.getLogger(__name__)
+        self.timeout = timeout
         if debug:
             ch = logging.StreamHandler()
             ch.setLevel(logging.DEBUG)
@@ -352,13 +353,6 @@ class PyNgen():
                 self.logger.error('Type created. Trying to add incident again.')
                 response = self._action(
                     "/incidents", "POST", data=report, files=files, retries=retries)
-        # try:
-        #     if response['status_code'] != 201:
-        #         raise UnexpectedError(
-        #             response['status_code'], "Unexpected status code. {}".format(response['data']))
-        #     return response["data"][0]["id"]
-        # except UnexpectedError as e:
-        #     raise NewIncidentFieldError(report, e.msg)
         return response["data"][0]["id"]
 
     # Bulk insert
@@ -374,8 +368,7 @@ class PyNgen():
     def _req(self, action, method, data=None, files=None):
         headers = {"apikey": self.apikey}
         session = retry_session(retries=3)
-        timeout = 5
-        kwargs = {"headers": headers, "timeout": timeout}
+        kwargs = {"headers": headers, "timeout": self.timeout}
         
         if method == "POST":
             kwargs['data'] = data
