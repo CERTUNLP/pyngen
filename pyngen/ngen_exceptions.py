@@ -67,6 +67,19 @@ class NewIncidentTypeFieldError(NgenError):
         return self._detail.format(self.msg, self.data)
 
 
+class NewIncidentTypeDeactivatedError(NgenError):
+    _detail = '\n\n - Incident type is deactivated. Error Message:\n{}\n - Data sent:\n{}'
+
+    def __init__(self, data, msg):
+        self.data = data
+        self.msg = msg
+
+    @property
+    def detail(self):
+        # json.dumps(json.loads(self.msg), indent=4, sort_keys=True))
+        return self._detail.format(self.msg, self.data)
+
+
 class NewIncidentError(NgenError):
     _detail = 'Error Message:\n{}'
 

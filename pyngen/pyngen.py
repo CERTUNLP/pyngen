@@ -410,8 +410,12 @@ class PyNgen():
                 raise UnexpectedError(
                     r.status_code, "Unexpected response (fields not in errors). {}".format(rdata))
             elif 'type' in rdata['errors']['fields']:
-                self.logger.debug('Incident type already exists.')
-                raise NewIncidentTypeFieldError(data, rdata)
+                if "is deactivated" in rdata['errors']['fields']['type'].lower():
+                    self.logger.debug('Incident type already exists but is deactivated.')
+                    raise NewIncidentTypeDeactivatedError(data, rdata)
+                else:
+                    self.logger.debug('Incident type does not exists.')
+                    raise NewIncidentTypeFieldError(data, rdata)
 
             raise NewIncidentFieldError(data, rdata)
         # Temporal
