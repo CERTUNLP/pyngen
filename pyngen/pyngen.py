@@ -5,7 +5,7 @@ import csv
 import _csv
 import json
 import socket
-import magic
+import filemime
 import re
 import tempfile
 import os
@@ -194,8 +194,8 @@ class PyNgen():
         return self._action("/status", "GET")
 
     def _openFile(self, evidence_path):
-        mime = magic.Magic(mime=True)
-        mimetype = mime.from_file(evidence_path)
+        fm = filemime.filemime()
+        mimetype = fm.load_file(evidence_path, mimeType=True)
         if type(mimetype) == bytes:
             mimetype = mimetype.decode('utf-8')
         data = open(evidence_path, "r").read()
