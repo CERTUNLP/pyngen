@@ -41,8 +41,8 @@ class SchemeNotSettedError(NgenError):
 
 
 
-class NewIncidentFieldError(NgenError):
-    _detail = '\n\n - Incident field error. Error Message:\n{}\n - Data sent:\n{}'
+class NewEventFieldError(NgenError):
+    _detail = '\n\n - Event field error. Error Message:\n{}\n - Data sent:\n{}'
 
     def __init__(self, data, msg):
         self.data = data
@@ -54,8 +54,8 @@ class NewIncidentFieldError(NgenError):
         return self._detail.format(self.msg, self.data)
 
 
-class NewIncidentTypeFieldError(NgenError):
-    _detail = '\n\n - Incident type field error. Error Message:\n{}\n - Data sent:\n{}'
+class NewEventTypeFieldError(NgenError):
+    _detail = '\n\n - Event type field error. Error Message:\n{}\n - Data sent:\n{}'
 
     def __init__(self, data, msg):
         self.data = data
@@ -67,8 +67,8 @@ class NewIncidentTypeFieldError(NgenError):
         return self._detail.format(self.msg, self.data)
 
 
-class NewIncidentTypeDeactivatedError(NgenError):
-    _detail = '\n\n - Incident type is deactivated. Error Message:\n{}\n - Data sent:\n{}'
+class NewEventTypeDeactivatedError(NgenError):
+    _detail = '\n\n - Event type is deactivated. Error Message:\n{}\n - Data sent:\n{}'
 
     def __init__(self, data, msg):
         self.data = data
@@ -80,7 +80,7 @@ class NewIncidentTypeDeactivatedError(NgenError):
         return self._detail.format(self.msg, self.data)
 
 
-class NewIncidentError(NgenError):
+class NewEventError(NgenError):
     _detail = 'Error Message:\n{}'
 
     def __init__(self,  msg):

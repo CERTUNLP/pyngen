@@ -9,23 +9,23 @@ import click
 parser = ArgumentParser(formatter_class=RawTextHelpFormatter, epilog="""
 EXAMPLES:
 %(prog)s init -apikey 0123456789abcdef -url https://ngen.example.com/api
-%(prog)s newincident -feed external_report -type malware -address ip.or.domain.com
+%(prog)s newevent -feed external_report -type malware -address ip.or.domain.com
 %(prog)s reportcsv -feed external_report -type miner -path path/to/file.csv  -addressheader ip""")
 
 parser.add_argument('revs', metavar='action', choices=[
-                    "newincident", "init", "reportcsv"], help='Set action: %(choices)s')
+                    "newevent", "init", "reportcsv"], help='Set action: %(choices)s')
 
-newincident_group = parser.add_argument_group('newincident arguments')
+newevent_group = parser.add_argument_group('newevent arguments')
 
-feed = newincident_group.add_argument("-feed", dest="feed", help="Select feed slug",
-required='newincident' in sys.argv or 'reportcsv' in sys.argv)
+feed = newevent_group.add_argument("-feed", dest="feed", help="Select feed slug",
+required='newevent' in sys.argv or 'reportcsv' in sys.argv)
 
-type = newincident_group.add_argument("-type", dest="type", help="Select type slug",
-required='newincident' in sys.argv or 'reportcsv' in sys.argv)
+type = newevent_group.add_argument("-type", dest="type", help="Select type slug",
+required='newevent' in sys.argv or 'reportcsv' in sys.argv)
 
-newincident_group.add_argument("-address", dest="address", help="IP or Domain", required='newincident' in sys.argv)
+newevent_group.add_argument("-address", dest="address", help="IP or Domain", required='newevent' in sys.argv)
 
-evidence_group = newincident_group.add_mutually_exclusive_group()
+evidence_group = newevent_group.add_mutually_exclusive_group()
 evidence_group.add_argument("-evidenceFile", dest="evidenceFile",
                             help="Select path of evidence")
 evidence_group.add_argument("-evidenceText", dest="evidenceText",
@@ -100,17 +100,16 @@ def inits(url, apikey):
     os.chmod(keyfile, 0o600)
 
 
-def createNewIncident(pyngen, address, incident_feed, incident_type, **kargs):
+def createNewEvent(pyngen, address, event_feed, event_taxonomy, **kargs):
     try:
-        res = pyngen.newIncident(
-            address, incident_feed, incident_type, **kargs)
-        print("Added incident ID: {}".format(res))
-    except NewIncidentFieldError as e:
-        print("Error creating incident: \n{}".format(e.detail))
+        res = pyngen.newEvent(address, event_feed, event_taxonomy, **kargs)
+        print("Added event: {}".format(res))
+    except NewEventFieldError as e:
+        print("Error creating event: \n{}".format(e.detail))
         exit(2)
 
-def addFromCSV(ngen, csv_path, incident_feed, incident_type, address_header, delimiter):
-    ngen.reportFromPathCSV(csv_path, incident_feed, incident_type, address_header, delimiter= delimiter)
+def addFromCSV(ngen, csv_path, event_feed, event_taxonomy, address_header, delimiter):
+    ngen.reportFromPathCSV(csv_path, event_feed, event_taxonomy, address_header, delimiter= delimiter)
 
 
 def getpyngen():
@@ -125,9 +124,9 @@ def getpyngen():
 
 
 
-if (args.revs == "newincident"):
+if (args.revs in "newevent"):
     ngen = getpyngen()
-    createNewIncident(ngen, args.address, args.feed,
+    createNewEvent(ngen, args.address, args.feed,
                       args.type, evidence_text=args.evidenceText, evidence_file=args.evidenceFile)
 elif (args.revs == "init"):
     inits(args.url, args.apikey)

@@ -18,7 +18,7 @@ from .lib import *
 
 class PyNgen():
 
-    def __init__(self, url, apikey, incident_format="json", debug=False, timeout=5):
+    def __init__(self, url, apikey, debug=False, timeout=5):
         url = urlparse(url)
         if url.scheme == "http":
             self.port = 80
@@ -33,7 +33,6 @@ class PyNgen():
         self.apikey = apikey
         self.hostname = url.hostname
         self.path = url.path
-        self.incident_format = incident_format
         self.logger = logging.getLogger(__name__)
         self.timeout = timeout
         if debug:
@@ -45,7 +44,7 @@ class PyNgen():
             self.logger.addHandler(ch)
         # check URL
         # check apikey
-        # self.logger.info(self._completeUrl("/incidents"))
+        # self.logger.info(self._completeUrl("/api"))
         self.checkUrl()
 
     # GENERICS
@@ -75,7 +74,10 @@ class PyNgen():
     # ==============================================
 
     def _getFeeds(self):
-        return self._action("/incidents/feeds", "GET")['data']
+        return self._action("/api/administration/feed/", "GET")
+
+    def _getFeedFor(self, slug):
+        return [e for e in self._action("/api/administration/feed/", "GET")['data']['results'] if e['slug'] == slug][0]
 
     def _selectField(self, data, field):
         if field != None:
@@ -106,7 +108,7 @@ class PyNgen():
             name: Name for the feed.
         """
         data = {"name": name}
-        return self._action("/incidents/feeds", "POST", data=data)["data"][0]["slug"]
+        return self._action("/api/feed", "POST", data=data)["data"][0]["slug"]
 
     def getFeed(self, slug):
         """
@@ -125,56 +127,76 @@ class PyNgen():
         **kargs keys: name, slug.
         """
         res = self._action(
-            "/incidents/feeds/{}".format(slug), "PATCH", data=kargs)
+            "/api/feeds/{}".format(slug), "PATCH", data=kargs)
         return res["data"]
-#        return self._action("incidents/feeds", "POST",data=data)["data"]
+#        return self._action("api/feeds", "POST",data=data)["data"]
 
     # ==============================================
-    # INCIDENT TYPES
+    # INCIDENT TAXONOMY
     # ==============================================
 
-    def _getIncidentTypes(self):
-        return self._action("/incidents/types", "GET")['data']
+    def _getEventTaxonomy(self):
+        return self._action("/api/taxonomy", "GET")
 
-    def getIncidentTypes(self, field=None):
-        data = self._getIncidentTypes()
+    def _getTaxonomyFor(self, slug):
+        print(self._action("/api/taxonomy/", "GET")['data']['results'])
+        print('FINN')
+        return [e for e in self._action("/api/taxonomy/", "GET")['data']['results'] if e['slug'] == slug][0]
+
+    def getEventTypes(self, field=None):
+        data = self._getEventTaxonomy()
         return self._selectField(data, field)
 
-    def getActiveIncidentTypes(self, field=None):
-        data = [elem for elem in self._getIncidentTypes()
+    def getActiveEventTypes(self, field=None):
+        data = [elem for elem in self._getEventTaxonomy()
                 if self._isActive(elem)]
         return self._selectField(data, field)
 
     def _getSlugFor(self, name):
         return slugify(name, separator="_")
 
-    def newIncidentType(self, name, slug=None):
+    def newEventType(self, name, slug=None):
         """
-        Creates a new Incident type with name.
+        Creates a new Event type with name.
         Keyword arguments:
             name: Name for the feed.
         Returns:
             Slug name
         """
         data = {"name": name}
-        return self._action("/incidents/types", "POST", data=data)["data"][0]["slug"]
+        return self._action("/api/taxonomy", "POST", data=data)["data"][0]["slug"]
 
-    def editIncidentType(self, slug, **kargs):
+    def editEventType(self, slug, **kargs):
         """
-        Edit a incident type vía slug name.
-        Get all slugs with getIncidentTypes(field="slug")
+        Edit a event type vía slug name.
+        Get all slugs with getEventTaxonomy(field="slug")
         **kargs keys: name, slug.
         """
         res = self._action(
-            "/incidents/types/{}".format(slug), "PATCH", data=kargs)
+            "/api/taxonomy/{}".format(slug), "PATCH", data=kargs)
         return res["data"]
+
+    # ==============================================
+    # INCIDENT TLP
+    # ==============================================
+
+    def _getTLPFor(self, slug):
+        return [e for e in self._action("/api/administration/tlp/", "GET")['data']['results'] if e['slug'] == slug][0]
+
+    # ==============================================
+    # INCIDENT PRIORITY
+    # ==============================================
+
+    # TODO : Cambiar name por slug cuando ngen priority lo tenga
+    def _getPriorityFor(self, slug):
+        return [e for e in self._action("/api/administration/priority/", "GET")['data']['results'] if e['name'].lower().replace(' ', '_') == slug][0]
 
     # ==============================================
     # INCIDENTS
     # ==============================================
 
-    def getIncidents(self):
-        return self._action("incidents/internals", "GET")['data']
+    def getEvents(self):
+        return self._action("api/internals", "GET")['data']
 
     # ==============================================
         # EX network_entity
@@ -191,7 +213,7 @@ class PyNgen():
     # luego de eso chequear compatibilidad de versiones API/ngen
 
     def checkUrl(self):
-        return self._action("/status", "GET")
+        return self._action("/api/network/1", "GET")
 
     def _openFile(self, evidence_path):
         fm = filemime.filemime()
@@ -204,9 +226,9 @@ class PyNgen():
             "evidence.txt", data, mimetype, {'Expires': '0'})}
         return files
 
-    def reportFromFileCSV(self, csv_file, incident_feed, incident_type, address_header, delimiter=None):
+    def reportFromFileCSV(self, csv_file, event_feed, event_taxonomy, address_header, delimiter=None):
         self.logger.debug("In reportFromFileCSV: {} {} {}".format(
-            incident_feed, incident_type, address_header))
+            event_feed, event_taxonomy, address_header))
         if not delimiter:
             try:
                 dialect = csv.Sniffer().sniff(csv_file.read(), delimiters="\t;, :")
@@ -237,21 +259,21 @@ class PyNgen():
             evidence = evfile.getvalue()
             self.logger.debug(address)
             self.logger.debug(evidence)
-            self.newIncident(address, incident_feed,
-                             incident_type, evidence_text=evidence)
+            self.newEvent(address, event_feed,
+                             event_taxonomy, evidence_text=evidence)
 
-    def reportFromPathCSV(self, csv_path, incident_feed, incident_type, address_header, delimiter=None):
+    def reportFromPathCSV(self, csv_path, event_feed, event_taxonomy, address_header, delimiter=None):
         with open(csv_path, newline='') as csv_file:
             self.reportFromFileCSV(
-                csv_file, incident_feed, incident_type, address_header, delimiter=delimiter)
+                csv_file, event_feed, event_taxonomy, address_header, delimiter=delimiter)
 
-    def reportFromCSVText(self, csv_text, incident_feed, incident_type, address_header, delimiter=None):
+    def reportFromCSVText(self, csv_text, event_feed, event_taxonomy, address_header, delimiter=None):
         self.logger.debug("Converting to StringIO: {}".format(csv_text))
         self.reportFromFileCSV(StringIO(csv_text),
-                               incident_feed, incident_type, address_header, delimiter=delimiter)
+                               event_feed, event_taxonomy, address_header, delimiter=delimiter)
 
-    def reportFromMalformedCSV(self, csv_text, incident_feed, incident_type, header_pos_start, header_pos_end, evidence_pos_start, address_pos, delimiter, delimiter_desired=',', line_delimiter=None, comment=None):
-        # TODO: revisar que todos los feeds y tipos de incidentes existan
+    def reportFromMalformedCSV(self, csv_text, event_feed, event_taxonomy, header_pos_start, header_pos_end, evidence_pos_start, address_pos, delimiter, delimiter_desired=',', line_delimiter=None, comment=None):
+        # TODO: revisar que todos los feeds y tipos de eventes existan
         if type(csv_text) == bytes:
             csv_text = csv_text.decode('utf-8')
 
@@ -290,33 +312,33 @@ class PyNgen():
         for address, evidence in hosts.items():
             parsed_evidence = "{}\n{}".format(
                 '\n'.join(header), '\n'.join(evidence))
-            self.newIncident(address, incident_feed, incident_type,
+            self.newEvent(address, event_feed, event_taxonomy,
                              evidence_text=parsed_evidence)
 
-    # get incident by id
+    # get event by id
 
-    def getIncident(self, id):
-        res = self._action("/incidents/{}".format(id), "GET")
+    def getEvent(self, id):
+        res = self._action("/api/{}".format(id), "GET")
         if res["status_code"] == 200:
             return res["data"]
 
-    def editIncident(self, id, **kargs):
+    def editEvent(self, id, **kargs):
         self.logger.debug(kargs, type(kargs))
         report = dict()
         report.update(kargs)
-        res = self._action("/incidents/{}".format(id), "PATCH", data=kargs)
+        res = self._action("/api/{}".format(id), "PATCH", data=kargs)
         return res["data"]
 
     def _parseError(self, response):
         if (response.code == 400):
             msg = json.loads(response.msg)
-            ans = "Errors in newIncident.\n"
+            ans = "Errors in newEvent.\n"
             if ("errors" in msg["errors"]["children"]["feed"].keys()):
                 feeds = self.getActiveFeeds(field="slug")
                 ans += "INVALID FEED slug, the valids are: {}\n".format(
                     ", ".join(feeds))
             if ("errors" in msg["errors"]["children"]["type"].keys()):
-                types = self.getActiveIncidentTypes(field="slug")
+                types = self.getActiveEventTypes(field="slug")
                 ans += "INVALID INCIDENT TYPE slug, the valids are: {}\n".format(
                     ", ".join(types))
             if (not "errors" in msg["errors"]["children"]["type"].keys() and not "errors" in msg["errors"]["children"]["feed"].keys()):
@@ -325,13 +347,34 @@ class PyNgen():
 
     # generate new report in Ngen.
 
-    def newIncident(self, address, incident_feed, incident_type, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
+    def newEvent(self, address, event_feed, event_taxonomy, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
         """Qué debería pasar"""
-        report = dict(
-            type=self._getSlugFor(incident_type),
-            address=address,
-            feed=incident_feed
-        )
+        url_taxonomy = self._getTaxonomyFor(event_taxonomy)['url']
+        url_feed = self._getFeedFor(event_feed)['url']
+        url_tlp = self._getTLPFor(kargs.get('tlp', 'amber'))['url']
+        url_priority = self._getPriorityFor(kargs.get('priority', 'medium'))['url']
+        report = {
+            # type=self._getSlugFor(event_taxonomy),
+            # address=address,
+            # feed=event_feed
+
+            'cidr': '163.10.40.40/32',
+            # 'domain': 'string',
+            'date': '2022-12-07T10:24:54.649Z',
+            # 'evidence_file_path': 'string',
+            'notes': 'estas son notas',
+            # 'parent': 'string',
+            # 'priority': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/priority/2/', # '2',
+            # 'tlp': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/tlp/2/', #'amber',
+            # 'taxonomy': 'http://backngen.servicios.cert.unlp.edu.ar/api/taxonomy/41/', #'phishing',
+            # 'feed': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/feed/1/', #'americas',
+            # 'reporter': 'http://backngen.servicios.cert.unlp.edu.ar/api/user/1/', #'reporter juan carlos',
+            # 'case': 'string',
+            'priority': url_priority,
+            'tlp': url_tlp,
+            'taxonomy': url_taxonomy,
+            'feed': url_feed,
+        }
         report.update(kargs)
 
         files = None
@@ -341,83 +384,87 @@ class PyNgen():
             files = {'evidence_file': (
                 "evidence.txt", evidence_text, 'text/plain', {'Expires': '0'})}
 
+        response = self._action(
+            "/api/event/", "POST", jsondata=report, retries=1)
+        return response
+    
         try:
             response = self._action(
-                "/incidents", "POST", data=report, files=files, retries=retries)
-        except NewIncidentTypeFieldError as e:
+                "/api/event/", "POST", data=report, files=files, retries=retries)
+        except NewEventTypeFieldError as e:
             if not create_type:
                 raise e
             else:
-                self.logger.error('Creating new type: {}, slug must going to be: {}'.format(incident_type, self._getSlugFor(incident_type)))
-                self.newIncidentType(incident_type)
-                self.logger.error('Type created. Trying to add incident again.')
+                self.logger.error('Creating new type: {}, slug must going to be: {}'.format(event_taxonomy, self._getSlugFor(event_taxonomy)))
+                self.newEventType(event_taxonomy)
+                self.logger.error('Type created. Trying to add event again.')
                 response = self._action(
-                    "/incidents", "POST", data=report, files=files, retries=retries)
+                    "/api/event/", "POST", data=report, files=files, retries=retries)
         return response["data"][0]["id"]
 
     # Bulk insert
 
-    def newIncidents(self):
+    def newEvents(self):
         # To Do
         pass
 
     def _completeUrl(self, action):
-        return "{}://{}:{}{}{}.{}".format(self.scheme, self.hostname, self.port, self.path, action, self.incident_format)
+        return "{}://{}:{}{}{}".format(self.scheme, self.hostname, self.port, self.path, action)
         # TODO: sacar el limit cuando cambie la API
 
-    def _req(self, action, method, data=None, files=None):
-        headers = {"apikey": self.apikey}
+    def _req(self, action, method, jsondata=None, files=None):
+        headers = {"Authorization": f'Token {self.apikey}'}
         session = retry_session(retries=3)
         kwargs = {"headers": headers, "timeout": self.timeout}
         
         if method == "POST":
-            kwargs['data'] = data
+            kwargs['json'] = jsondata
             kwargs['files'] = files
         elif method == "PATCH":
-            kwargs['data'] = data
+            kwargs['json'] = jsondata
         else:
             kwargs['files'] = files
 
-        res = session.request(method, self._completeUrl(action), **kwargs)
+        res = session.request(method, self._completeUrl(action), params={'page_size': 150}, **kwargs)
         return session, res        
 
     #   Generic action for REST interface
-    def _action(self, action, method, data=None, files=None, retries=1):
+    def _action(self, action, method, jsondata=None, files=None, retries=1):
         for i in range(retries):
             try:
-                s, r = self._req(action, method, data=data, files=files)
+                s, r = self._req(action, method, jsondata=jsondata, files=files)
                 break
             except requests.exceptions.ReadTimeout as e:
                 if i >= retries-1:
                     raise e
         
-        self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\ndata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
-            r.url, method, r.request.headers, r.request.body, r.text, r.headers, data, str(files)[:200], r))
+        self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\njsondata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
+            r.url, method, r.request.headers, r.request.body, r.text, r.headers, jsondata, str(files)[:200], r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
         # elif r.status_code == 404:
         #     raise NotFoundError()
         elif r.status_code == 400:
             try:
-                rdata = json.loads(r.text)
+                rjsondata = json.loads(r.text)
             except:
                 raise Exception('Response code 400. Cannot parse response from Ngen as json: {}'.format(r.text))
 
-            if not 'errors' in rdata:
+            if not 'errors' in rjsondata:
                 raise UnexpectedError(
-                    r.status_code, "Unexpected response (errors not in response). {}".format(rdata))
-            elif not 'fields' in rdata['errors']:
+                    r.status_code, "Unexpected response (errors not in response). {}".format(rjsondata))
+            elif not 'fields' in rjsondata['errors']:
                 raise UnexpectedError(
-                    r.status_code, "Unexpected response (fields not in errors). {}".format(rdata))
-            elif 'type' in rdata['errors']['fields']:
-                if "is deactivated" in rdata['errors']['fields']['type'].lower():
-                    self.logger.debug('Incident type already exists but is deactivated.')
-                    raise NewIncidentTypeDeactivatedError(data, rdata)
+                    r.status_code, "Unexpected response (fields not in errors). {}".format(rjsondata))
+            elif 'type' in rjsondata['errors']['fields']:
+                if "is deactivated" in rjsondata['errors']['fields']['type'].lower():
+                    self.logger.debug('Event type already exists but is deactivated.')
+                    raise NewEventTypeDeactivatedError(jsondata, rjsondata)
                 else:
-                    self.logger.debug('Incident type does not exists.')
-                    raise NewIncidentTypeFieldError(data, rdata)
+                    self.logger.debug('Event type does not exists.')
+                    raise NewEventTypeFieldError(jsondata, rjsondata)
 
-            raise NewIncidentFieldError(data, rdata)
+            raise NewEventFieldError(jsondata, rjsondata)
         # Temporal
         # ==========
         elif r.status_code == 204:
@@ -426,5 +473,4 @@ class PyNgen():
         elif not r.status_code in [200, 201, 204]:
             raise UnexpectedError(r.status_code, r.text)
 
-        rdata = json.loads(r.text)
-        return {"status_code": r.status_code, "data": rdata}
+        return {"status_code": r.status_code, "data": r.json()}
