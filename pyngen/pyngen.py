@@ -77,7 +77,7 @@ class PyNgen():
         return self._action("/api/administration/feed/", "GET")
 
     def _getFeedFor(self, slug):
-        return [e for e in self._action("/api/administration/feed/", "GET")['data']['results'] if e['slug'] == slug][0]
+        return [e for e in self._action("/api/administration/feed/", "GET")['data'] if e['slug'] == slug][0]
 
     def _selectField(self, data, field):
         if field != None:
@@ -108,7 +108,7 @@ class PyNgen():
             name: Name for the feed.
         """
         data = {"name": name}
-        return self._action("/api/feed", "POST", data=data)["data"][0]["slug"]
+        return self._action("/api/feed", "POST", data=data)['data'][0]["slug"]
 
     def getFeed(self, slug):
         """
@@ -128,8 +128,8 @@ class PyNgen():
         """
         res = self._action(
             "/api/feeds/{}".format(slug), "PATCH", data=kargs)
-        return res["data"]
-#        return self._action("api/feeds", "POST",data=data)["data"]
+        return res['data']
+#        return self._action("api/feeds", "POST",data=data)['data']
 
     # ==============================================
     # INCIDENT TAXONOMY
@@ -139,9 +139,11 @@ class PyNgen():
         return self._action("/api/taxonomy", "GET")
 
     def _getTaxonomyFor(self, slug):
-        print(self._action("/api/taxonomy/", "GET")['data']['results'])
-        print('FINN')
-        return [e for e in self._action("/api/taxonomy/", "GET")['data']['results'] if e['slug'] == slug][0]
+        # print(self._action("/api/taxonomy/", "GET"))
+        # print('FINN')
+        tax = self._action("/api/taxonomy/", "GET")['data']
+        # print(tax)
+        return [e for e in tax if e['slug'] == slug][0]
 
     def getEventTypes(self, field=None):
         data = self._getEventTaxonomy()
@@ -164,7 +166,7 @@ class PyNgen():
             Slug name
         """
         data = {"name": name}
-        return self._action("/api/taxonomy", "POST", data=data)["data"][0]["slug"]
+        return self._action("/api/taxonomy", "POST", data=data)['data'][0]["slug"]
 
     def editEventType(self, slug, **kargs):
         """
@@ -174,14 +176,14 @@ class PyNgen():
         """
         res = self._action(
             "/api/taxonomy/{}".format(slug), "PATCH", data=kargs)
-        return res["data"]
+        return res['data']
 
     # ==============================================
     # INCIDENT TLP
     # ==============================================
 
     def _getTLPFor(self, slug):
-        return [e for e in self._action("/api/administration/tlp/", "GET")['data']['results'] if e['slug'] == slug][0]
+        return [e for e in self._action("/api/administration/tlp/", "GET")['data'] if e['slug'] == slug][0]
 
     # ==============================================
     # INCIDENT PRIORITY
@@ -189,7 +191,7 @@ class PyNgen():
 
     # TODO : Cambiar name por slug cuando ngen priority lo tenga
     def _getPriorityFor(self, slug):
-        return [e for e in self._action("/api/administration/priority/", "GET")['data']['results'] if e['name'].lower().replace(' ', '_') == slug][0]
+        return [e for e in self._action("/api/administration/priority/", "GET")['data'] if e['name'].lower().replace(' ', '_') == slug][0]
 
     # ==============================================
     # INCIDENTS
@@ -320,14 +322,14 @@ class PyNgen():
     def getEvent(self, id):
         res = self._action("/api/{}".format(id), "GET")
         if res["status_code"] == 200:
-            return res["data"]
+            return res['data']
 
     def editEvent(self, id, **kargs):
         self.logger.debug(kargs, type(kargs))
         report = dict()
         report.update(kargs)
         res = self._action("/api/{}".format(id), "PATCH", data=kargs)
-        return res["data"]
+        return res['data']
 
     def _parseError(self, response):
         if (response.code == 400):
@@ -358,11 +360,12 @@ class PyNgen():
             # address=address,
             # feed=event_feed
 
-            'cidr': '163.10.40.40/32',
+            # 'cidr': '163.10.40.40/32',
+            'cidr': address,
             # 'domain': 'string',
-            'date': '2022-12-07T10:24:54.649Z',
+            # 'date': '2022-12-07T10:24:54.649Z',
             # 'evidence_file_path': 'string',
-            'notes': 'estas son notas',
+            'notes': evidence_text,
             # 'parent': 'string',
             # 'priority': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/priority/2/', # '2',
             # 'tlp': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/tlp/2/', #'amber',
@@ -400,7 +403,7 @@ class PyNgen():
                 self.logger.error('Type created. Trying to add event again.')
                 response = self._action(
                     "/api/event/", "POST", data=report, files=files, retries=retries)
-        return response["data"][0]["id"]
+        return response['data'][0]["id"]
 
     # Bulk insert
 
@@ -425,21 +428,43 @@ class PyNgen():
         else:
             kwargs['files'] = files
 
-        res = session.request(method, self._completeUrl(action), params={'page_size': 150}, **kwargs)
-        return session, res        
+        page = 1
+        results = []
+        res = session.request(method, self._completeUrl(action), params={'page_size': 150, 'page': page}, **kwargs)
+        rj = res.json()
+
+        if 'results' in rj:
+            results.extend(rj['results'])
+        
+        while 'results' in rj and rj['next']:
+            page += 1
+            res = session.request(method, self._completeUrl(action), params={'page_size': 150, 'page': page}, **kwargs)
+            rj = res.json()
+            results.extend(rj['results'])
+
+        # TODO: hacer mas lindo esto
+        # r = res.json()
+        # r = results
+        # r['']
+
+        # print('='*100)
+        # print(results)
+        # print('='*100)
+        
+        return session, res, results
 
     #   Generic action for REST interface
     def _action(self, action, method, jsondata=None, files=None, retries=1):
         for i in range(retries):
             try:
-                s, r = self._req(action, method, jsondata=jsondata, files=files)
+                s, r, res = self._req(action, method, jsondata=jsondata, files=files)
                 break
             except requests.exceptions.ReadTimeout as e:
                 if i >= retries-1:
                     raise e
         
-        self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\njsondata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
-            r.url, method, r.request.headers, r.request.body, r.text, r.headers, jsondata, str(files)[:200], r))
+        # self.logger.debug("URL: {}\n\nMETHOD: {}\n\nREQ HEADERS: {}\n\nREQ BODY: {}\n\nRES TEXT: {}\n\nRES HEADERS: {}\n\njsondata: {}\n\nfiles: {}\n\nresponse: {}\n\n".format(
+            # r.url, method, r.request.headers, r.request.body, r.text, r.headers, jsondata, str(files)[:200], r))
         if r.status_code == 401:
             raise UnauthorizedNgenError()
         # elif r.status_code == 404:
@@ -473,4 +498,4 @@ class PyNgen():
         elif not r.status_code in [200, 201, 204]:
             raise UnexpectedError(r.status_code, r.text)
 
-        return {"status_code": r.status_code, "data": r.json()}
+        return {"status_code": r.status_code, "data": res}
