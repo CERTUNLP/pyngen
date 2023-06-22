@@ -37,7 +37,8 @@ ngen init -apikey <apikey>  -url https://<ngenurl>/api
 ```
 
 ```bash
-ngen newincident -feed shodan -address 163.10.0.2 -type open_dns
+ngen newevent -feed shodan -address 163.10.0.2 -type open_dns
+ngen newevent -feed shodan -type spam -address 192.168.0.11 -evidenceFile /tmp/test.txt,/tmp/test2.txt -evidenceText evidenceexampletext
 ```
 
 ```bash
