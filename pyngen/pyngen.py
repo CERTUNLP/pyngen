@@ -347,32 +347,28 @@ class PyNgen():
                 return response.msg
             return ans
 
-    # generate new report in Ngen.
 
-    def newEvent(self, address, event_feed, event_taxonomy, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
+    def newIncident(self, address, event_feed, event_taxonomy, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
+        """
+        Keep for backwards compatibility
+        """
+        self.logger.warn("newIncident is deprecated, use newEvent instead")
+        return self.newEvent(address, event_feed, event_taxonomy, evidence_text, evidence_file, create_type, retries, **kargs)
+
+
+    # generate new report in Ngen.
+    def newEvent(self, address, event_feed, event_taxonomy, notes=None, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
         """Qué debería pasar"""
         url_taxonomy = self._getTaxonomyFor(event_taxonomy)['url']
         url_feed = self._getFeedFor(event_feed)['url']
         url_tlp = self._getTLPFor(kargs.get('tlp', 'amber'))['url']
         url_priority = self._getPriorityFor(kargs.get('priority', 'medium'))['url']
         report = {
-            # type=self._getSlugFor(event_taxonomy),
-            # address=address,
-            # feed=event_feed
-
-            # 'cidr': '163.10.40.40/32',
             'cidr': address,
-            # 'domain': 'string',
+            # 'domain': 'string', # TODO
             # 'date': '2022-12-07T10:24:54.649Z',
             # 'evidence_file_path': 'string',
-            'notes': evidence_text,
-            # 'parent': 'string',
-            # 'priority': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/priority/2/', # '2',
-            # 'tlp': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/tlp/2/', #'amber',
-            # 'taxonomy': 'http://backngen.servicios.cert.unlp.edu.ar/api/taxonomy/41/', #'phishing',
-            # 'feed': 'http://backngen.servicios.cert.unlp.edu.ar/api/administration/feed/1/', #'americas',
-            # 'reporter': 'http://backngen.servicios.cert.unlp.edu.ar/api/user/1/', #'reporter juan carlos',
-            # 'case': 'string',
+            'notes': notes,
             'priority': url_priority,
             'tlp': url_tlp,
             'taxonomy': url_taxonomy,
@@ -380,33 +376,21 @@ class PyNgen():
         }
         report.update(kargs)
 
-        files = None
+        files = []
         if evidence_file:
-            files = self._openFile(evidence_file)
-        elif evidence_text:
-            files = {'evidence_file': (
-                "evidence.txt", evidence_text, 'text/plain', {'Expires': '0'})}
+            for f in evidence_file.split(','):
+                if not os.path.exists(f):
+                    raise Exception("File not found: {}".format(f))
+                files.append(('evidence', (os.path.basename(f), open(f, 'rb'))))
 
-        response = self._action(
-            "/api/event/", "POST", jsondata=report, retries=1)
+        if evidence_text:
+            files.append(('evidence', ("evidence.txt", evidence_text, 'text/plain', {'Expires': '0'})))
+
+        # response = self._action("/api/event/", "POST", jsondata=report, retries=1)
+        response = self._action("/api/event/", "POST", jsondata=report, files=files, retries=1)
         return response
-    
-        try:
-            response = self._action(
-                "/api/event/", "POST", data=report, files=files, retries=retries)
-        except NewEventTypeFieldError as e:
-            if not create_type:
-                raise e
-            else:
-                self.logger.error('Creating new type: {}, slug must going to be: {}'.format(event_taxonomy, self._getSlugFor(event_taxonomy)))
-                self.newEventType(event_taxonomy)
-                self.logger.error('Type created. Trying to add event again.')
-                response = self._action(
-                    "/api/event/", "POST", data=report, files=files, retries=retries)
-        return response['data'][0]["id"]
 
     # Bulk insert
-
     def newEvents(self):
         # To Do
         pass
@@ -421,12 +405,13 @@ class PyNgen():
         kwargs = {"headers": headers, "timeout": self.timeout}
         
         if method == "POST":
-            kwargs['json'] = jsondata
-            kwargs['files'] = files
+            if files:
+                kwargs['data'] = jsondata
+                kwargs['files'] = files
+            else:
+                kwargs['json'] = jsondata
         elif method == "PATCH":
             kwargs['json'] = jsondata
-        else:
-            kwargs['files'] = files
 
         page = 1
         results = []
@@ -435,12 +420,13 @@ class PyNgen():
 
         if 'results' in rj:
             results.extend(rj['results'])
-        
-        while 'results' in rj and rj['next']:
-            page += 1
-            res = session.request(method, self._completeUrl(action), params={'page_size': 150, 'page': page}, **kwargs)
-            rj = res.json()
-            results.extend(rj['results'])
+            while 'results' in rj and rj['next']:
+                page += 1
+                res = session.request(method, self._completeUrl(action), params={'page_size': 150, 'page': page}, **kwargs)
+                rj = res.json()
+                results.extend(rj['results'])
+        else:
+            results = rj
 
         # TODO: hacer mas lindo esto
         # r = res.json()

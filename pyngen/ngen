@@ -18,25 +18,28 @@ parser.add_argument('revs', metavar='action', choices=[
 newevent_group = parser.add_argument_group('newevent arguments')
 
 feed = newevent_group.add_argument("-feed", dest="feed", help="Select feed slug",
-required='newevent' in sys.argv or 'reportcsv' in sys.argv)
+                                   required='newevent' in sys.argv or 'reportcsv' in sys.argv)
 
 type = newevent_group.add_argument("-type", dest="type", help="Select type slug",
-required='newevent' in sys.argv or 'reportcsv' in sys.argv)
+                                   required='newevent' in sys.argv or 'reportcsv' in sys.argv)
+
+newevent_group.add_argument("-notes", dest="notes", help="Notes for event", 
+                            required=False, default=None)
 
 newevent_group.add_argument("-address", dest="address", help="IP or Domain", required='newevent' in sys.argv)
 
-evidence_group = newevent_group.add_mutually_exclusive_group()
-evidence_group.add_argument("-evidenceFile", dest="evidenceFile",
-                            help="Select path of evidence")
-evidence_group.add_argument("-evidenceText", dest="evidenceText",
+newevent_group.add_argument("-evidenceFile", dest="evidenceFile",
+                            help="Select path of evidence", default=None)
+
+newevent_group.add_argument("-evidenceText", dest="evidenceText",
                             help="Select text to send as evidence", default=None)
 
 init_group = parser.add_argument_group('init arguments')
 
 init_group.add_argument("-apikey", dest="apikey",
-                    help="Set API KEY for init", required='init' in sys.argv)
+                        help="Set API KEY for init", required='init' in sys.argv)
 init_group.add_argument("-url", dest="url",
-                    help="Set Ngen URL for init", required='init' in sys.argv)
+                        help="Set Ngen URL for init", required='init' in sys.argv)
 
 csv_group = parser.add_argument_group('reportcsv arguments')
 
@@ -44,11 +47,11 @@ csv_group._group_actions.append(feed)
 csv_group._group_actions.append(type)
 
 csv_group.add_argument("-path", dest="pathcsv",
-                    help="Set Path of CSV file", required='reportcsv' in sys.argv)
+                       help="Set Path of CSV file", required='reportcsv' in sys.argv)
 csv_group.add_argument("-addressheader", dest="address_header",
-                    help="Set CSV Address field", required='reportcsv' in sys.argv)
+                       help="Set CSV Address field", required='reportcsv' in sys.argv)
 csv_group.add_argument("-delimiter", dest="delimiter",
-                    help="(Optional) Set delimiter for CSV. For TAB use $'\\t'", default=None)
+                       help="(Optional) Set delimiter for CSV. For TAB use $'\\t'", default=None)
 
 
 #reportFromPathCSV
@@ -127,7 +130,7 @@ def getpyngen():
 if (args.revs in "newevent"):
     ngen = getpyngen()
     createNewEvent(ngen, args.address, args.feed,
-                      args.type, evidence_text=args.evidenceText, evidence_file=args.evidenceFile)
+                      args.type, evidence_text=args.evidenceText, evidence_file=args.evidenceFile, notes=args.notes)
 elif (args.revs == "init"):
     inits(args.url, args.apikey)
 
