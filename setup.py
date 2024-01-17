@@ -8,6 +8,7 @@ req_file = 'pyngen.egg-info/requirements.txt'
 if not os.path.isfile('pyngen.egg-info/requirements.txt'):
     req_file = 'requirements.txt'
 
+required = []
 if os.path.isfile(req_file):
     with open(req_file) as f:
         required = f.read().splitlines()
