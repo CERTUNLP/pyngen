@@ -1,11 +1,15 @@
 import setuptools
+import os
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-with open('pyngen.egg-info/requirements.txt') as f:
+req_file = 'pyngen.egg-info/requirements.txt'
+if not os.path.isfile('pyngen.egg-info/requirements.txt'):
+    req_file = 'requirements.txt'
+
+with open(req_file) as f:
     required = f.read().splitlines()
-# DEPENDENCIES = open('requirements.txt', 'r').read().split('\n')
 # pensar en cambiar de vuelta filemime por Magic
 
 setuptools.setup(
