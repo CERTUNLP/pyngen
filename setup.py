@@ -24,7 +24,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CERTUNLP/pyngen",
-    packages=['pyngen'],
+    packages=['pyngen_django'],
     install_requires=required,
     classifiers=[
         "Programming Language :: Python :: 3",
