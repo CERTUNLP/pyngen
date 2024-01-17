@@ -139,11 +139,7 @@ class PyNgen():
         return self._action("/api/taxonomy", "GET")
 
     def _getTaxonomyFor(self, slug):
-        # print(self._action("/api/taxonomy/", "GET"))
-        # print('FINN')
-        tax = self._action("/api/taxonomy/", "GET")['data']
-        # print(tax)
-        return [e for e in tax if e['slug'] == slug][0]
+        return [e for e in self._action("/api/taxonomy/", "GET")['data'] if e['slug'] == slug][0]
 
     def getEventTypes(self, field=None):
         data = self._getEventTaxonomy()
@@ -364,7 +360,8 @@ class PyNgen():
         url_tlp = self._getTLPFor(kargs.get('tlp', 'amber'))['url']
         url_priority = self._getPriorityFor(kargs.get('priority', 'medium'))['url']
         report = {
-            'cidr': address,
+            "address_value": address,
+            # 'cidr': address,
             # 'domain': 'string', # TODO
             # 'date': '2022-12-07T10:24:54.649Z',
             # 'evidence_file_path': 'string',
