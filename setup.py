@@ -4,9 +4,9 @@ import os
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-req_file = 'pyngen.egg-info/requirements.txt'
-if not os.path.isfile('pyngen.egg-info/requirements.txt'):
-    req_file = 'requirements.txt'
+req_file = "pyngen.egg-info/requirements.txt"
+if not os.path.isfile("pyngen.egg-info/requirements.txt"):
+    req_file = "requirements.txt"
 
 required = []
 if os.path.isfile(req_file):
@@ -15,18 +15,18 @@ if os.path.isfile(req_file):
 # pensar en cambiar de vuelta filemime por Magic
 
 setuptools.setup(
-    name='pyngen_django',
-    version='0.1.50',
-    scripts=['pyngen/ngen'],
+    name="pyngen_django",
+    version="0.1.50",
+    scripts=["pyngen_django/ngen"],
     author="CERTUNLP",
     author_email="soporte@cert.unlp.edu.ar",
     description="Ngen REST. A python library for using Ngen",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CERTUNLP/pyngen",
-    packages=['pyngen_django'],
+    packages=["pyngen_django"],
     install_requires=required,
     classifiers=[
         "Programming Language :: Python :: 3",
-    ]
+    ],
 )
