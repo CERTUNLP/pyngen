@@ -15,7 +15,7 @@ if os.path.isfile(req_file):
 # pensar en cambiar de vuelta filemime por Magic
 
 setuptools.setup(
-    name='pyngen-django',
+    name='pyngen',
     version='0.1.50',
     scripts=['pyngen/ngen'],
     author="CERTUNLP",
