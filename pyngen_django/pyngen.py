@@ -355,10 +355,10 @@ class PyNgen():
     # generate new report in Ngen.
     def newEvent(self, address, event_feed, event_taxonomy, notes=None, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
         """Qué debería pasar"""
-        url_taxonomy = self._getTaxonomyFor(event_taxonomy)['url']
-        url_feed = self._getFeedFor(event_feed)['url']
-        url_tlp = self._getTLPFor(kargs.get('tlp', 'amber'))['url']
-        url_priority = self._getPriorityFor(kargs.get('priority', 'medium'))['url']
+        url_taxonomy = event_taxonomy # self._getTaxonomyFor(event_taxonomy)['url']
+        url_feed = event_feed # self._getFeedFor(event_feed)['url']
+        url_tlp = kargs.get('tlp', 'amber') # self._getTLPFor(kargs.get('tlp', 'amber'))['url']
+        url_priority = kargs.get('priority', 'medium') # self._getPriorityFor(kargs.get('priority', 'medium'))['url']
         report = {
             "address_value": address,
             # 'cidr': address,
