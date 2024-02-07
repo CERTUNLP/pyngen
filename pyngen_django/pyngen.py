@@ -344,14 +344,6 @@ class PyNgen():
             return ans
 
 
-    def newIncident(self, address, event_feed, event_taxonomy, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
-        """
-        Keep for backwards compatibility
-        """
-        self.logger.warn("newIncident is deprecated, use newEvent instead")
-        return self.newEvent(address, event_feed, event_taxonomy, evidence_text, evidence_file, create_type, retries, **kargs)
-
-
     # generate new report in Ngen.
     def newEvent(self, address, event_feed, event_taxonomy, notes=None, evidence_text=None, evidence_file=None, create_type=False, retries=1, **kargs):
         """Qué debería pasar"""
