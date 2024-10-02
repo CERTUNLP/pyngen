@@ -479,9 +479,6 @@ class PyNgen:
             params={"page_size": 150, "page": page},
             **kwargs,
         )
-        print("TEST")
-        print(kwargs)
-        print(res.__dict__)
         rj = res.json()
 
         if "results" in rj:
@@ -503,10 +500,6 @@ class PyNgen:
         # r = res.json()
         # r = results
         # r['']
-
-        # print('='*100)
-        # print(results)
-        # print('='*100)
 
         return session, res, results
 
