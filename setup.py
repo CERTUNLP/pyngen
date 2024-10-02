@@ -4,15 +4,12 @@ import os
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-req_file = "pyngen.egg-info/requirements.txt"
-if not os.path.isfile("pyngen.egg-info/requirements.txt"):
-    req_file = "requirements.txt"
-
-required = []
-if os.path.isfile(req_file):
-    with open(req_file) as f:
-        required = f.read().splitlines()
-# pensar en cambiar de vuelta filemime por Magic
+required = [
+    "requests",
+    "filemime",
+    "click",
+    "python-slugify",
+]
 
 setuptools.setup(
     name="pyngen_django",
