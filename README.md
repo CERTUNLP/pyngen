@@ -17,7 +17,7 @@ Usage Python Module
 from pyngen import PyNgen
 
 #Create object PyNgen
-ngen = PyNgen("https://ngen.example.com/api", "YOUR_API_KEY")
+ngen = PyNgen("https://ngen.example.com/", "YOUR_API_KEY")
 
 #Minimum data required.
 #Add a new Incident for IP "163.10.0.2" for feed "shodan" and Type "open_dns"
@@ -33,7 +33,7 @@ Usage CLI
 ---------
 
 ```bash
-ngen init -apikey <apikey>  -url https://<ngenurl>/api
+ngen init -apikey <apikey>  -url https://<ngenurl>/
 ```
 
 ```bash
