@@ -402,6 +402,7 @@ class PyNgen:
         evidence_file=None,
         create_type=False,
         retries=1,
+        date=None,
         **kargs,
     ):
         """Qué debería pasar"""
@@ -420,6 +421,8 @@ class PyNgen:
             "feed": url_feed,
             "artifacts": [],
         }
+        if date:
+            report["date"] = date
         report.update(kargs)
 
         files = []
