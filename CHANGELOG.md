@@ -20,6 +20,8 @@ top of it. Code written for 1.x keeps working: `from pyngen import PyNgen`,
   one has `list`, `first`, `get`, `create`, `update`, `patch`, `delete` and
   `by_slug`; events and cases accept `evidence=[...]` files.
 - `report()`: one event per address and taxonomy while its case is open.
+  The new evidence is uploaded before the previous one is deleted, and the
+  files are read before anything is touched.
 - `lookup()`: network, entity and contacts of an address, with the
   inheritance rules Ngen uses to notify.
 - `report_csv()`: one event per address found in a CSV.

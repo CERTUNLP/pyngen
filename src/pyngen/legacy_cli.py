@@ -51,7 +51,7 @@ def inits(url, apikey):
     """Validate the credentials and store them in ~/.ngen."""
     url, apikey = url.strip(), apikey.strip()
     try:
-        PyNgen(url, apikey)
+        PyNgen(url, apikey, verify=config.load()["verify"])
     except UnauthorizedNgenError as e:
         sys.exit(f"Error: {e.detail}")
     directory = config.save(url, apikey)

@@ -9,6 +9,7 @@ until its case is closed.
 from dataclasses import dataclass
 
 from .exceptions import NgenNotFoundError, NgenValidationError
+from .resources import evidence_files
 
 # Ngen (2.6) requires priority and tlp on every event; these match what pyngen 1.x sent
 DEFAULT_PRIORITY = "medium"
@@ -82,12 +83,14 @@ def report(
     ``taxonomy``, ``feed``, ``priority`` and ``tlp`` are slugs or URLs;
     ``priority`` and ``tlp`` default to ``medium`` and ``amber`` since Ngen
     requires them. With ``replace_evidence`` the previous evidence of the
-    event is deleted first, so it only holds the latest report; without it,
-    sending a file the event already has gives ``action == "unchanged"``.
-    Several files are zipped into ``zip_name`` (default ``<address>.zip``)
-    because Ngen notifies once per evidence.
+    event is deleted once the new one is uploaded, so it only holds the
+    latest report; without it, sending a file the event already has gives
+    ``action == "unchanged"``. Several files are zipped into ``zip_name``
+    (default ``<address>.zip``) because Ngen notifies once per evidence.
     """
     zip_name = zip_name or f"{address}.zip"
+    # Read the files now: a missing or unreadable one fails before anything is touched
+    loaded = [(name, content) for _, (name, content, *_) in evidence_files(evidence)]
     taxonomy_obj = _taxonomy(ngen, taxonomy)
     event = find_open_event(ngen, address, taxonomy_obj)
 
@@ -101,22 +104,37 @@ def report(
             notes=notes,
             tags=tags,
             avoid_auto_merge=True,
-            evidence=evidence,
+            evidence=loaded,
             zip_name=zip_name,
         )
         return ReportResult("created", created)
 
-    if replace_evidence:
-        for evidence_url in event.get("evidence") or []:
-            try:
-                ngen.evidence.delete(evidence_url)
-            except NgenNotFoundError:
-                pass
+    previous = list(event.get("evidence") or [])
+
+    def upload():
+        return ngen.events.patch(event["url"], evidence=loaded, zip_name=zip_name)
 
     try:
-        updated = ngen.events.patch(event["url"], evidence=evidence, zip_name=zip_name)
+        updated = upload()
     except NgenValidationError as e:
-        if replace_evidence or not _duplicate_evidence(e):
+        if not _duplicate_evidence(e):
             raise
-        return ReportResult("unchanged", event)
+        if not replace_evidence:
+            return ReportResult("unchanged", event)
+        # The event already holds this file: drop the previous set and upload again
+        _delete_evidence(ngen, previous)
+        return ReportResult("updated", upload())
+
+    if replace_evidence:
+        _delete_evidence(ngen, previous)
+        # the PATCH answer was built before the deletion
+        updated["evidence"] = [u for u in updated.get("evidence") or [] if u not in previous]
     return ReportResult("updated", updated)
+
+
+def _delete_evidence(ngen, urls):
+    for url in urls:
+        try:
+            ngen.evidence.delete(url)
+        except NgenNotFoundError:
+            pass

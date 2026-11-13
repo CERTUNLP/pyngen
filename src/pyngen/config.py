@@ -27,11 +27,15 @@ def _read(name):
 def load():
     """``{"url", "token", "username", "password", "verify"}`` from env, then ``~/.ngen``."""
     verify = os.environ.get("NGEN_VERIFY", "true").strip().lower() not in ("0", "false", "no")
+    username, password = os.environ.get("NGEN_USERNAME"), os.environ.get("NGEN_PASSWORD")
+    token = os.environ.get("NGEN_TOKEN")
+    if not token and not (username and password):
+        token = _read("apikey")  # the saved key only when nothing in the environment says otherwise
     return {
         "url": os.environ.get("NGEN_URL") or _read("url"),
-        "token": os.environ.get("NGEN_TOKEN") or _read("apikey"),
-        "username": os.environ.get("NGEN_USERNAME"),
-        "password": os.environ.get("NGEN_PASSWORD"),
+        "token": token,
+        "username": username,
+        "password": password,
         "verify": verify,
     }
 

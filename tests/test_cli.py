@@ -102,3 +102,36 @@ def test_legacy_ngen_command(fake_server, tmp_path, monkeypatch, capsys):
     csv.write_text("ip,port\n10.0.0.1,22\n10.0.0.2,80\n")
     legacy_cli.main(["reportcsv", "-feed", "shodan", "-type", "open_port", "-path", str(csv), "-addressheader", "ip"])
     assert "Added 2 events" in capsys.readouterr().out
+
+
+def test_init_honours_insecure_and_timeout(fake_server, tmp_path, monkeypatch):
+    monkeypatch.setenv("NGEN_CONFIG_DIR", str(tmp_path))
+    adapter = fake_server({("GET", "/api/"): lambda r: (200, {})})
+    out = CliRunner().invoke(cli, ["--insecure", "--timeout", "3", "init", "--url", BASE, "--token", "t"],
+                             env={"NGEN_URL": "", "NGEN_TOKEN": ""})
+    assert out.exit_code == 0, out.output
+    assert adapter.kwargs[-1]["verify"] is False and adapter.kwargs[-1]["timeout"] == 3
+
+
+def test_patch_can_clear_a_field_with_json_null(fake_server):
+    adapter = fake_server({("PATCH", "/api/event/9/"): lambda r: (200, EVENT)})
+    run(["patch", "event", "9", "case:=null"])
+    assert json.loads(adapter.calls[-1].body) == {"case": None}
+
+
+def test_list_limit_does_not_fetch_the_next_page(fake_server):
+    pages = {
+        "1": {"results": [EVENT] * 100, "next": f"{BASE}/api/event/?page=2"},
+        "2": {"results": [EVENT], "next": None},
+    }
+    adapter = fake_server({("GET", "/api/event/"): lambda r: (200, pages["2" if "page=2" in r.url else "1"])})
+    assert len(json.loads(run(["list", "event", "--limit", "100"]).output)) == 100
+    assert len(adapter.calls) == 1
+
+
+def test_legacy_init_honours_ngen_verify(fake_server, tmp_path, monkeypatch):
+    monkeypatch.setenv("NGEN_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setenv("NGEN_VERIFY", "false")
+    adapter = fake_server({("GET", "/api/"): lambda r: (200, {})})
+    legacy_cli.main(["init", "-apikey", "KEY", "-url", BASE])
+    assert adapter.kwargs[-1]["verify"] is False

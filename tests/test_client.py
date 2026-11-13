@@ -5,7 +5,8 @@ import pytest
 import requests
 
 from conftest import BASE, jwt, paginated
-from pyngen import Ngen, NgenAPIError, NgenConfigError, NgenNotFoundError, NgenValidationError, report
+from pyngen import Ngen, NgenAPIError, NgenAuthError, NgenConfigError, NgenNotFoundError, NgenValidationError, report
+from pyngen.auth import JWTAuth
 
 
 def test_token_header_and_pagination(client):
@@ -234,3 +235,82 @@ def test_lookup_without_network(client):
     ngen, _ = client({("GET", "/api/network/"): paginated([])})
     result = ngen.lookup("192.0.2.1")
     assert (result.network, result.entity, result.contacts) == (None, None, [])
+
+
+def test_json_none_policy_post_drops_patch_keeps(client):
+    ngen, adapter = client({
+        ("POST", "/api/event/"): lambda r: (201, {}),
+        ("PATCH", "/api/event/9/"): lambda r: (200, {}),
+        ("PUT", "/api/event/9/"): lambda r: (200, {}),
+    })
+    ngen.events.create(address_value="10.0.0.1", case=None)
+    assert json.loads(adapter.calls[-1].body) == {"address_value": "10.0.0.1"}
+    ngen.events.patch(9, case=None)
+    assert json.loads(adapter.calls[-1].body) == {"case": None}
+    ngen.events.update(9, case=None)
+    assert json.loads(adapter.calls[-1].body) == {"case": None}
+
+
+def test_exhausted_retries_return_the_response():
+    adapter = Ngen(BASE, token="x").session.get_adapter("https://anything")
+    assert adapter.max_retries.raise_on_status is False
+    assert adapter.max_retries.total == 3
+
+
+def test_from_env_url_override_and_jwt_precedence(monkeypatch, tmp_path):
+    monkeypatch.setenv("NGEN_CONFIG_DIR", str(tmp_path))
+    (tmp_path / "url").write_text(BASE)
+    (tmp_path / "apikey").write_text("saved")
+    for name in ("NGEN_URL", "NGEN_TOKEN", "NGEN_USERNAME", "NGEN_PASSWORD"):
+        monkeypatch.delenv(name, raising=False)
+    ngen = Ngen.from_env(url="https://other.test", token="t")
+    assert ngen.base_url == "https://other.test" and ngen.auth.token == "t"
+    # JWT credentials, explicit or from the environment, win over the saved key
+    assert isinstance(Ngen.from_env(username="u", password="p").auth, JWTAuth)
+    monkeypatch.setenv("NGEN_USERNAME", "u")
+    monkeypatch.setenv("NGEN_PASSWORD", "p")
+    assert isinstance(Ngen.from_env().auth, JWTAuth)
+    monkeypatch.setenv("NGEN_TOKEN", "env")
+    assert Ngen.from_env().auth.token == "env"
+
+
+def test_jwt_logout_renews_first_and_checks_the_answer(client):
+    ngen, adapter = client(
+        {
+            ("POST", "/api/token/"): lambda r: (200, {"access": jwt(time.time() + 300), "refresh": jwt(time.time() + 3600)}),
+            ("POST", "/api/token/refresh/"): lambda r: (200, {"access": jwt(time.time() + 300)}),
+            ("POST", "/api/logout/"): lambda r: (400, None),
+            ("GET", "/api/version/"): lambda r: (200, {}),
+        },
+        token=None, username="u", password="p",
+    )
+    ngen.version()
+    ngen.auth.access = jwt(time.time() - 1)
+    with pytest.raises(NgenAuthError):
+        ngen.logout()
+    assert [p for _, p in adapter.paths()][-2:] == ["/api/token/refresh/", "/api/logout/"]
+    assert ngen.auth.access is None and ngen.auth.refresh is None
+
+
+def test_report_uploads_before_deleting_and_reads_files_first(client, tmp_path):
+    f = tmp_path / "r.html"
+    f.write_text("x")
+    ngen, adapter = client(report_routes([EXISTING]))
+    with pytest.raises(FileNotFoundError):
+        report(ngen, "10.0.0.1", "vuln_scan", "nessus", [tmp_path / "missing.html"])
+    assert adapter.calls == []  # nothing touched, not even the lookups
+    report(ngen, "10.0.0.1", "vuln_scan", "nessus", [f])
+    methods = [m for m, _ in adapter.paths()]
+    assert methods.index("PATCH") < methods.index("DELETE")
+
+
+def test_report_duplicate_with_replace_retries_after_deleting(client, tmp_path):
+    f = tmp_path / "r.html"
+    f.write_text("x")
+    answers = iter([(400, {"file": ["already exists"]}), (200, {"url": f"{BASE}/api/event/5/"})])
+    routes = report_routes([EXISTING])
+    routes[("PATCH", "/api/event/5/")] = lambda r: next(answers)
+    ngen, adapter = client(routes)
+    assert report(ngen, "10.0.0.1", "vuln_scan", "nessus", [f]).action == "updated"
+    tail = adapter.paths()[-3:]
+    assert tail == [("PATCH", "/api/event/5/"), ("DELETE", "/api/evidence/1/"), ("PATCH", "/api/event/5/")]

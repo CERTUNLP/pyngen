@@ -72,7 +72,10 @@ class Ngen:
 
         self.session = requests.Session()
         # Retry only idempotent methods (urllib3 default) so a POST never duplicates an event
-        retry = Retry(total=retries, backoff_factor=0.5, status_forcelist=(502, 503, 504))
+        retry = Retry(
+            total=retries, backoff_factor=0.5, status_forcelist=(502, 503, 504),
+            raise_on_status=False,  # hand the last 5xx to send() so it becomes an NgenAPIError
+        )
         self.session.mount("http://", HTTPAdapter(max_retries=retry))
         self.session.mount("https://", HTTPAdapter(max_retries=retry))
         self.session.headers["Accept"] = "application/json"
@@ -109,9 +112,12 @@ class Ngen:
         (what ``ngen init`` writes). Keyword arguments override both.
         """
         settings = config.load()
-        url = kwargs.pop("url", None) or settings.pop("url")
+        configured_url = settings.pop("url")
+        url = kwargs.pop("url", None) or configured_url
         if not url:
             raise NgenConfigError("NGEN_URL is not set and there is no ~/.ngen/url")
+        if (kwargs.get("username") or kwargs.get("password")) and "token" not in kwargs:
+            settings["token"] = None  # explicit JWT credentials win over a saved API key
         settings.update(kwargs)
         return cls(url, **settings)
 
@@ -128,10 +134,12 @@ class Ngen:
         """
         Send a request and return the :class:`requests.Response`.
 
-        ``None`` values are dropped from ``json`` and ``data`` so the server
-        applies its defaults. Raises a typed :class:`NgenAPIError` on 4xx/5xx.
+        On POST, ``None`` values are dropped from ``json`` so the server
+        applies its defaults; on PUT/PATCH they are sent as ``null`` to clear
+        the field. Multipart ``data`` never carries ``None``. Raises a typed
+        :class:`NgenAPIError` on 4xx/5xx.
         """
-        if json is not None and isinstance(json, dict):
+        if isinstance(json, dict) and method.upper() == "POST":
             json = {k: v for k, v in json.items() if v is not None}
         if data is not None:
             data = {k: _form_value(v) for k, v in data.items() if v is not None}

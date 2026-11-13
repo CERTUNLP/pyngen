@@ -17,9 +17,11 @@ class FakeAdapter(BaseAdapter):
         super().__init__()
         self.routes = routes
         self.calls = []
+        self.kwargs = []  # verify, timeout... of each call
 
     def send(self, request, **kwargs):
         self.calls.append(request)
+        self.kwargs.append(kwargs)
         path = requests.utils.urlparse(request.url).path
         handler = self.routes.get((request.method, path))
         if handler is None:

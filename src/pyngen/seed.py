@@ -182,6 +182,12 @@ def seed(ngen, entities=3, networks=20, events=100, cases=20, seed=None, log=pri
     return result
 
 
+def _seeded_domain(name):
+    """``name`` is ``seed.example`` or a subdomain of it (not ``notseed.example``)."""
+    name = (name or "").lower().rstrip(".")
+    return name == DOMAIN or name.endswith("." + DOMAIN)
+
+
 def _delete_all(resource, urls, log, name):
     deleted = 0
     for url in urls:
@@ -207,7 +213,9 @@ def clean(ngen, log=print):
         for case in ngen.cases.list(event_cidr=str(net)):
             cases[case["url"]] = case
     for event in ngen.events.list(is_subdomain_of=DOMAIN):
-        events[event["url"]] = event
+        # Ngen matches by suffix, so check the domain boundary and the tag ourselves
+        if TAG in (event.get("tags") or []) and _seeded_domain(event.get("domain")):
+            events[event["url"]] = event
     for case in ngen.cases.list(event_domain=DOMAIN):
         cases[case["url"]] = case
 
@@ -224,7 +232,11 @@ def clean(ngen, log=print):
         for entity in seeded_entities
         for n in ngen.networks.list(network_entity=id_from_url(entity["url"]))
     ]
-    contacts = [c["url"] for c in ngen.contacts.list(username__icontains=f".{DOMAIN}")]
+    contacts = [
+        c["url"]
+        for c in ngen.contacts.list(username__icontains=f".{DOMAIN}")
+        if _seeded_domain(c.get("username", "").rpartition("@")[2])
+    ]
 
     # Events first: a case can't be deleted while it holds events
     _delete_all(ngen.events, events, log, "events")

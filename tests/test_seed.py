@@ -96,6 +96,12 @@ def test_seed_stays_in_reserved_space_and_clean_removes_it():
 
     for item in result.entities + result.contacts + result.networks + result.events + result.cases:
         adapter.routes[("DELETE", requests.utils.urlparse(item["url"]).path)] = delete
+    # Look-alikes that Ngen's suffix/substring filters would also return must survive
+    fake.store["/api/event/"].append({"url": f"{BASE}/api/event/9001/", "domain": f"not{DOMAIN}", "tags": [], "case": None})
+    fake.store["/api/event/"].append({"url": f"{BASE}/api/event/9002/", "domain": f"www.{DOMAIN}", "tags": [], "case": None})
+    fake.store["/api/contact/"].append({"url": f"{BASE}/api/contact/9001/", "username": f"x@team.{DOMAIN}.org"})
+    for path in ("/api/event/9001/", "/api/event/9002/", "/api/contact/9001/"):
+        adapter.routes[("DELETE", path)] = delete
     clean(ngen, log=lambda m: None)
     created = {i["url"] for i in result.entities + result.contacts + result.networks + result.events + result.cases}
     assert set(fake.deleted) == created

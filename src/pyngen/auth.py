@@ -81,16 +81,27 @@ class JWTAuth(AuthBase):
         return self.access
 
     def logout(self):
-        """Blacklist the refresh token. Does not log in again just to log out."""
-        if self.refresh and not self._expired(self.access):
-            self.client.session.post(
+        """
+        Blacklist the refresh token on the server and forget both tokens.
+        Renews the access token through the refresh token if needed (never
+        with the password); raises NgenAuthError when the server refuses.
+        """
+        try:
+            if self._expired(self.refresh):
+                return
+            if self._expired(self.access):
+                self._renew()
+            response = self.client.session.post(
                 self.client.url("/api/logout/"),
                 json={"refresh": self.refresh},
                 headers={"Authorization": f"Bearer {self.access}"},
                 timeout=self.client.timeout,
                 verify=self.client.verify,
             )
-        self.access = self.refresh = None
+            if response.status_code >= 400:
+                raise NgenAuthError(response.status_code, response.url, response.text)
+        finally:
+            self.access = self.refresh = None
 
     def __call__(self, request):
         request.headers["Authorization"] = f"Bearer {self.token()}"

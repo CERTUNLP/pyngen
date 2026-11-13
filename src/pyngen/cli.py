@@ -1,4 +1,5 @@
 import dataclasses
+import itertools
 import json
 
 import click
@@ -91,9 +92,12 @@ def cli(ctx, url, token, username, password, insecure, timeout):
 @cli.command()
 @click.option("--url", "init_url", prompt="Ngen URL", help="Ngen base URL.")
 @click.option("--token", "init_token", prompt="API key", hide_input=True, help="API key.")
-def init(init_url, init_token):
+@click.pass_context
+def init(ctx, init_url, init_token):
     """Check an API key and save it with the URL in ~/.ngen for later runs."""
-    Ngen(init_url, token=init_token).request("GET", "/api/")
+    options = ctx.parent.params
+    verify = not options["insecure"] and config.load()["verify"]
+    Ngen(init_url, token=init_token, verify=verify, timeout=options["timeout"]).request("GET", "/api/")
     click.echo(f"Saved in {config.save(init_url, init_token)}")
 
 
@@ -112,12 +116,7 @@ def version(make):
 def list_(make, resource, filters, limit):
     """List RESOURCE, with optional key=value filters (e.g. event cidr=10.0.0.1/32)."""
     items = _resource(make(), resource).list(**_fields(filters))
-    result = []
-    for item in items:
-        if limit is not None and len(result) >= limit:
-            break
-        result.append(item)
-    _echo(result)
+    _echo(list(itertools.islice(items, limit)))
 
 
 @cli.command()
