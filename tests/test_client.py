@@ -314,3 +314,57 @@ def test_report_duplicate_with_replace_retries_after_deleting(client, tmp_path):
     assert report(ngen, "10.0.0.1", "vuln_scan", "nessus", [f]).action == "updated"
     tail = adapter.paths()[-3:]
     assert tail == [("PATCH", "/api/event/5/"), ("DELETE", "/api/evidence/1/"), ("PATCH", "/api/event/5/")]
+
+
+def test_absolute_urls_stay_on_the_configured_host(client):
+    ngen, adapter = client({("GET", "/api/event/"): lambda r: (200, {"results": [], "next": None})})
+    # a proxy may answer with http:// links for an https:// server: same host, configured scheme
+    assert ngen.url(f"http://ngen.test/api/event/?page=2") == f"{BASE}/api/event/?page=2"
+    with pytest.raises(NgenConfigError):
+        ngen.url("https://evil.test/api/event/")
+    with pytest.raises(NgenConfigError):
+        ngen.events.get("https://evil.test/api/event/1/")
+    assert adapter.calls == []  # nothing was sent to the other host
+
+
+def test_logout_revokes_a_refresh_token_about_to_expire(client):
+    ngen, adapter = client(
+        {("POST", "/api/logout/"): lambda r: (205, None)}, token=None, username="u", password="p"
+    )
+    ngen.auth.access = jwt(time.time() + 300)
+    ngen.auth.refresh = jwt(time.time() + 20)  # inside the renewal leeway, still valid
+    ngen.logout()
+    assert adapter.paths() == [("POST", "/api/logout/")]
+
+
+def test_auth_response_that_is_not_json_is_a_typed_error(client):
+    ngen, _ = client(
+        {("POST", "/api/token/"): lambda r: (200, b"<html>login page</html>")},
+        token=None, username="u", password="p",
+    )
+    with pytest.raises(NgenAPIError):
+        ngen.version()
+
+
+def test_report_rejects_empty_evidence(client):
+    ngen, adapter = client(report_routes([EXISTING]))
+    with pytest.raises(ValueError):
+        report(ngen, "10.0.0.1", "vuln_scan", "nessus", [])
+    assert adapter.calls == []  # the previous evidence is not deleted
+
+
+def test_report_propagates_file_errors_that_are_not_duplicates(client, tmp_path):
+    f = tmp_path / "r.html"
+    f.write_text("x")
+    routes = report_routes([EXISTING])
+    routes[("PATCH", "/api/event/5/")] = lambda r: (400, {"file": ["Upload a valid file."]})
+    ngen, adapter = client(routes)
+    with pytest.raises(NgenValidationError):
+        report(ngen, "10.0.0.1", "vuln_scan", "nessus", [f])
+    assert "DELETE" not in [m for m, _ in adapter.paths()]
+    # Ngen answers in the language of the server; the database detail does not change
+    from pyngen.report import _duplicate_evidence
+
+    spanish = NgenValidationError(400, "u", {"file": ["Ya existe una entidad Event con file=x."]})
+    db = NgenValidationError(400, "u", {"file": ["?"], "_detail": 'duplicate key value violates unique constraint "evidence_file_key"'})
+    assert _duplicate_evidence(spanish) and _duplicate_evidence(db)

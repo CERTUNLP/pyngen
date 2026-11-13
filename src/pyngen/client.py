@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -126,8 +127,19 @@ class Ngen:
         return Resource(self, path)
 
     def url(self, path):
+        """
+        Absolute URL for ``path``. An absolute ``path`` (a pagination link, a
+        resource URL) must be on the configured host, since every request
+        carries the credentials; its scheme is replaced by the configured one
+        because a proxy may hand out ``http://`` links for an ``https://`` server.
+        """
         if path.startswith(("http://", "https://")):
-            return path
+            base, target = urlsplit(self.base_url), urlsplit(path)
+            if target.netloc.lower() != base.netloc.lower():
+                raise NgenConfigError(
+                    f"refusing to send credentials to {path}: not on {self.base_url}"
+                )
+            return urlunsplit((base.scheme, base.netloc, target.path, target.query, target.fragment))
         return self.base_url + "/" + path.lstrip("/")
 
     def send(self, method, path, params=None, json=None, data=None, files=None):

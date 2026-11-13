@@ -1,3 +1,4 @@
+import pytest
 import io
 
 from conftest import BASE, paginated
@@ -44,3 +45,9 @@ def test_report_csv_reuse_open(client):
     })
     results = report_csv(ngen, "ip,port\n10.0.0.1,22\n10.0.0.2,80\n", "open_port", "nmap", "ip", reuse_open=True)
     assert [r.action for r in results] == ["updated", "created"]
+
+
+def test_group_rows_rejects_a_missing_address_header():
+    with pytest.raises(ValueError, match="'host' not found"):
+        group_rows("ip,port\n10.0.0.1,22\n", "host")
+    assert group_rows("", "ip") == {}

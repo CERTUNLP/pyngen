@@ -59,8 +59,20 @@ def find_open_event(ngen, address, taxonomy):
 
 
 def _duplicate_evidence(error):
-    # Ngen keeps one copy of each file per event (unique on the content hash)
-    return isinstance(error.body, dict) and "file" in error.body
+    """
+    ``error`` is Ngen rejecting a file the event already holds (one copy of
+    each file per event, unique on the content hash). Other ``file`` errors
+    (an invalid upload) are not duplicates.
+    """
+    if not isinstance(error.body, dict) or "file" not in error.body:
+        return False
+    messages = error.body["file"]
+    if not isinstance(messages, list):
+        messages = [messages]
+    detail = str(error.body.get("_detail") or "")
+    # Django's unique message is localized ("already exists", "Ya existe"); the
+    # database detail is not
+    return "unique constraint" in detail or any("exist" in str(m).lower() for m in messages)
 
 
 def report(
@@ -91,6 +103,9 @@ def report(
     zip_name = zip_name or f"{address}.zip"
     # Read the files now: a missing or unreadable one fails before anything is touched
     loaded = [(name, content) for _, (name, content, *_) in evidence_files(evidence)]
+    if not loaded:
+        # with nothing to upload, replacing would only delete the previous evidence
+        raise ValueError("report() needs at least one evidence file")
     taxonomy_obj = _taxonomy(ngen, taxonomy)
     event = find_open_event(ngen, address, taxonomy_obj)
 

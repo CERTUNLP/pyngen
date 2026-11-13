@@ -24,6 +24,7 @@ from .resources import id_from_url
 TAG = "seed"
 DOMAIN = "seed.example"
 ENTITY_MARK = "[seed"
+ENTITY_RE = re.compile(r"\[seed [0-9a-f]{6}\]$")
 RANGES = [ipaddress.ip_network(n) for n in ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24")]
 SUBNET_PREFIX = 28
 ROLES = ["technical", "administrative", "abuse", "notifications", "noc"]
@@ -94,6 +95,15 @@ def seed(ngen, entities=3, networks=20, events=100, cases=20, seed=None, log=pri
     fall inside those networks; ``cases`` groups 1 to 3 of the events that
     Ngen did not put in a case on its own. Same ``seed``, same data.
     """
+    counts = {"entities": entities, "networks": networks, "events": events, "cases": cases}
+    for name, value in counts.items():
+        if not isinstance(value, int) or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer, got {value!r}")
+    if events and not (entities and networks):
+        raise ValueError("events need at least one entity with one network")
+    if cases and not events:
+        raise ValueError("cases need at least one event")
+
     fake = _faker(seed)
     rng = random.Random(seed)
     run = secrets.token_hex(3)  # keeps slugs and domains unique across runs
@@ -104,6 +114,10 @@ def seed(ngen, entities=3, networks=20, events=100, cases=20, seed=None, log=pri
     priorities = _catalog(ngen.priorities)
     tlps = _catalog(ngen.tlps)
     states = _catalog(ngen.states)
+    # Ngen mails the contacts whose priority severity is >= the event's and, when
+    # none qualifies, the contacts of the parent networks (which may be real):
+    # the least severe priority makes the seeded contact qualify for everything
+    contact_priority = max(priorities, key=lambda p: p.get("severity", 0))
     subnets = _free_subnets(ngen)
     rng.shuffle(subnets)
 
@@ -123,7 +137,7 @@ def seed(ngen, entities=3, networks=20, events=100, cases=20, seed=None, log=pri
                 username=f"{_slug(first)}.{_slug(last)}@{domain}",
                 type="email",
                 role=rng.choice(ROLES),
-                priority=rng.choice(priorities)["url"],
+                priority=contact_priority["url"],
                 networks=[],  # required, linked from the network below
             )
             result.contacts.append(contact)
@@ -219,14 +233,19 @@ def clean(ngen, log=print):
     for case in ngen.cases.list(event_domain=DOMAIN):
         cases[case["url"]] = case
 
-    # Cases Ngen opened on its own for seeded events go too
-    seeded_cases = [
-        url
-        for url, case in cases.items()
-        if TAG in (case.get("tags") or []) or set(case.get("events") or []) <= events.keys()
-    ]
+    # Deleting a case deletes its events, so a case only goes when every event
+    # in it is a seeded one: cases Ngen opened on its own for seeded events are
+    # included, a seeded case an analyst added real events to is kept
+    seeded_cases = []
+    for url, case in cases.items():
+        case_events = set(case.get("events") or [])
+        if case_events <= events.keys() and (case_events or TAG in (case.get("tags") or [])):
+            seeded_cases.append(url)
 
-    seeded_entities = list(ngen.entities.list(name__icontains=ENTITY_MARK))
+    # name__icontains is a substring match: check the full "[seed xxxxxx]" marker
+    seeded_entities = [
+        e for e in ngen.entities.list(name__icontains=ENTITY_MARK) if ENTITY_RE.search(e.get("name") or "")
+    ]
     networks = [
         n["url"]
         for entity in seeded_entities

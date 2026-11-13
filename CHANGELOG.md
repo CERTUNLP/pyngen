@@ -20,14 +20,27 @@ top of it. Code written for 1.x keeps working: `from pyngen import PyNgen`,
   one has `list`, `first`, `get`, `create`, `update`, `patch`, `delete` and
   `by_slug`; events and cases accept `evidence=[...]` files.
 - `report()`: one event per address and taxonomy while its case is open.
-  The new evidence is uploaded before the previous one is deleted, and the
-  files are read before anything is touched.
+  The new evidence is uploaded before the previous one is deleted, the
+  files are read before anything is touched, an empty evidence list is
+  rejected, and only a confirmed duplicate upload triggers the replacement
+  (other file errors propagate).
 - `lookup()`: network, entity and contacts of an address, with the
   inheritance rules Ngen uses to notify.
 - `report_csv()`: one event per address found in a CSV.
 - `pyngen` command: `init`, `version`, `list`, `get`, `create`, `patch`,
   `delete`, `report`, `report-csv`, `lookup`, `seed`.
 - `pyngen seed`: fake data for test instances (`pip install "pyngen[seed]"`).
+  Seeded contacts get the least severe priority so Ngen never falls back to
+  the contacts of a real parent network; `--clean` keeps cases that hold
+  non-seeded events and only deletes entities with the full `[seed xxxxxx]`
+  marker; counts are validated before anything is written.
+- Absolute URLs (pagination links, resource URLs) must be on the configured
+  host, so the credentials are never sent elsewhere; their scheme is
+  replaced by the configured one. Non-JSON answers to a login are
+  `NgenAPIError`, and a refresh token is revoked on logout as long as it
+  has not expired.
+- `report_csv()` fails with a clear message when the address column is not
+  in the CSV header instead of sending nothing.
 
 ### Changed
 

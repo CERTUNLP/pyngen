@@ -14,7 +14,10 @@ pytest.importorskip("faker")
 CATALOGS = {
     "/api/taxonomy/": [{"url": f"{BASE}/api/taxonomy/1/", "slug": "malware", "active": True}],
     "/api/administration/feed/": [{"url": f"{BASE}/api/administration/feed/1/", "active": True}],
-    "/api/administration/priority/": [{"url": f"{BASE}/api/administration/priority/1/"}],
+    "/api/administration/priority/": [
+        {"url": f"{BASE}/api/administration/priority/1/", "severity": 1},
+        {"url": f"{BASE}/api/administration/priority/5/", "severity": 5},
+    ],
     "/api/administration/tlp/": [{"url": f"{BASE}/api/administration/tlp/1/"}],
     "/api/state/": [{"url": f"{BASE}/api/state/1/", "active": True}],
 }
@@ -83,6 +86,8 @@ def test_seed_stays_in_reserved_space_and_clean_removes_it():
 
     for contact in result.contacts:
         assert contact["username"].endswith(f".{DOMAIN}")
+        # least severe priority: Ngen would otherwise mail the parent networks' real contacts
+        assert contact["priority"] == f"{BASE}/api/administration/priority/5/"
     for item in result.networks + result.events:
         address = item["address_value"]
         try:
@@ -100,11 +105,29 @@ def test_seed_stays_in_reserved_space_and_clean_removes_it():
     fake.store["/api/event/"].append({"url": f"{BASE}/api/event/9001/", "domain": f"not{DOMAIN}", "tags": [], "case": None})
     fake.store["/api/event/"].append({"url": f"{BASE}/api/event/9002/", "domain": f"www.{DOMAIN}", "tags": [], "case": None})
     fake.store["/api/contact/"].append({"url": f"{BASE}/api/contact/9001/", "username": f"x@team.{DOMAIN}.org"})
-    for path in ("/api/event/9001/", "/api/event/9002/", "/api/contact/9001/"):
+    fake.store["/api/entity/"].append({"url": f"{BASE}/api/entity/9001/", "name": "Research [seedling]"})
+    # a seeded case an analyst added a real event to: deleting it would delete that event
+    mixed = next(c for c in fake.store["/api/case/"] if c["url"] == result.cases[0]["url"])
+    mixed["events"] = mixed["events"] + [f"{BASE}/api/event/9002/"]
+    for path in ("/api/event/9001/", "/api/event/9002/", "/api/contact/9001/", "/api/entity/9001/"):
         adapter.routes[("DELETE", path)] = delete
     clean(ngen, log=lambda m: None)
     created = {i["url"] for i in result.entities + result.contacts + result.networks + result.events + result.cases}
-    assert set(fake.deleted) == created
+    assert set(fake.deleted) == created - {mixed["url"]}
+
+
+def test_seed_validates_counts_before_writing():
+    fake = FakeNgen()
+    ngen, adapter = make_client(fake.routes())
+    with pytest.raises(ValueError):
+        seed(ngen, networks=0, log=lambda m: None)
+    with pytest.raises(ValueError):
+        seed(ngen, entities=-1, log=lambda m: None)
+    with pytest.raises(ValueError):
+        seed(ngen, events=0, cases=1, log=lambda m: None)
+    assert adapter.calls == []
+    result = seed(ngen, entities=1, networks=0, events=0, cases=0, log=lambda m: None)
+    assert len(result.entities) == 1 and not result.networks
 
 
 def test_same_seed_same_data():

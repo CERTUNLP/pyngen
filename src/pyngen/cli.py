@@ -201,10 +201,13 @@ def report(make, address, taxonomy, feed, priority, tlp, notes, tags, evidence, 
 @click.pass_obj
 def report_csv_(make, path, taxonomy, feed, address_header, delimiter, priority, tlp, notes, reuse_open):
     """One event per address in a CSV file, with its rows as evidence."""
-    results = report_csv(
-        make(), path, taxonomy, feed, address_header, delimiter=delimiter,
-        priority=priority, tlp=tlp, notes=notes, reuse_open=reuse_open,
-    )
+    try:
+        results = report_csv(
+            make(), path, taxonomy, feed, address_header, delimiter=delimiter,
+            priority=priority, tlp=tlp, notes=notes, reuse_open=reuse_open,
+        )
+    except ValueError as e:  # the address header is not in the file
+        raise click.UsageError(str(e))
     for result in results:
         click.echo(f"{result.action}: {result.event.get('address_value')} {result.event.get('url')}")
 
@@ -244,10 +247,10 @@ def lookup(make, address, type_, role, as_json):
 
 
 @cli.command()
-@click.option("--entities", default=3, show_default=True)
-@click.option("--networks", default=20, show_default=True, help="Networks (and contacts) per entity.")
-@click.option("--events", default=100, show_default=True)
-@click.option("--cases", default=20, show_default=True)
+@click.option("--entities", default=3, show_default=True, type=click.IntRange(min=0))
+@click.option("--networks", default=20, show_default=True, type=click.IntRange(min=0), help="Networks (and contacts) per entity.")
+@click.option("--events", default=100, show_default=True, type=click.IntRange(min=0))
+@click.option("--cases", default=20, show_default=True, type=click.IntRange(min=0))
 @click.option("--seed", "seed_value", type=int, help="Random seed, for repeatable data.")
 @click.option("--clean", is_flag=True, help="Delete the seeded data instead.")
 @click.option("--yes", is_flag=True, help="Do not ask for confirmation.")
@@ -263,7 +266,10 @@ def seed(make, entities, networks, events, cases, seed_value, clean, yes):
     if clean:
         seeding.clean(ngen, log=click.echo)
         return
-    result = seeding.seed(ngen, entities, networks, events, cases, seed=seed_value, log=click.echo)
+    try:
+        result = seeding.seed(ngen, entities, networks, events, cases, seed=seed_value, log=click.echo)
+    except ValueError as e:  # e.g. events without networks to put them in
+        raise click.UsageError(str(e))
     click.echo(
         f"Created {len(result.entities)} entities, {len(result.contacts)} contacts, "
         f"{len(result.networks)} networks, {len(result.events)} events and {len(result.cases)} cases"

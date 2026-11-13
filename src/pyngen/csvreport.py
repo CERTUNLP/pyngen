@@ -33,8 +33,16 @@ def group_rows(csv_file, address_header, delimiter=None):
         delimiter = sniff_delimiter(csv_file.read())
         csv_file.seek(0)
 
+    reader = csv.DictReader(csv_file, delimiter=delimiter)
+    if reader.fieldnames is None:  # empty input
+        return {}
+    if address_header not in reader.fieldnames:
+        raise ValueError(
+            f"column {address_header!r} not found in the CSV header: {', '.join(reader.fieldnames)}"
+        )
+
     groups = {}
-    for row in csv.DictReader(csv_file, delimiter=delimiter):
+    for row in reader:
         address = (row.get(address_header) or "").strip()
         if not address:
             continue

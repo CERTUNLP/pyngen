@@ -44,8 +44,9 @@ class JWTAuth(AuthBase):
         self.access = None
         self.refresh = None
 
-    def _expired(self, token):
-        return token is None or _jwt_exp(token) - self.leeway < time.time()
+    def _expired(self, token, leeway=None):
+        leeway = self.leeway if leeway is None else leeway
+        return token is None or _jwt_exp(token) - leeway < time.time()
 
     def _post(self, path, payload):
         response = self.client.session.post(
@@ -56,7 +57,7 @@ class JWTAuth(AuthBase):
         )
         if response.status_code != 200:
             raise NgenAuthError(response.status_code, response.url, response.text)
-        return response.json()
+        return self.client.decode(response)
 
     def login(self):
         data = self._post("/api/token/", {"username": self.username, "password": self.password})
@@ -87,7 +88,8 @@ class JWTAuth(AuthBase):
         with the password); raises NgenAuthError when the server refuses.
         """
         try:
-            if self._expired(self.refresh):
+            # No leeway here: a refresh token valid for a few more seconds can still be used
+            if self._expired(self.refresh, leeway=0):
                 return
             if self._expired(self.access):
                 self._renew()
