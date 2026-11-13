@@ -1,6 +1,9 @@
+"""Kept for pyngen 1.x code that imported ``retry_session`` from here."""
+
 import requests
-from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 
 def retry_session(retries, session=None, backoff_factor=0.3, status_forcelist=(500, 502, 503, 504)):
     session = session or requests.Session()
@@ -12,6 +15,6 @@ def retry_session(retries, session=None, backoff_factor=0.3, status_forcelist=(5
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
     return session
