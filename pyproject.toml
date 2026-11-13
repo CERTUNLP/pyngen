@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyngen"
+version = "2.0.0"
+description = "Python client and CLI for the Ngen REST API"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "CERTUNLP", email = "soporte@cert.unlp.edu.ar" }]
+requires-python = ">=3.9"
+dependencies = ["requests>=2.28", "click>=8.0"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Topic :: Security",
+    "Intended Audience :: System Administrators",
+]
+
+[project.optional-dependencies]
+seed = ["faker>=18"]
+dev = ["pytest>=7", "faker>=18"]
+
+[project.urls]
+Homepage = "https://github.com/CERTUNLP/pyngen"
+Changelog = "https://github.com/CERTUNLP/pyngen/blob/main/CHANGELOG.md"
+Ngen = "https://github.com/CERTUNLP/ngen"
+
+[project.scripts]
+pyngen = "pyngen.cli:main"
+ngen = "pyngen.legacy_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
